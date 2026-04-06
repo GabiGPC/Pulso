@@ -54,22 +54,42 @@ const CATEGORIES = [
 
 // State
 let state = {
-  myModalityIds: ['corrida', 'crossfit', 'capoeira'],
+  myModalityIds: [],
   selectedModalityId: null,
   selectedDuration: 60,
   selectedIntensity: 'normal',
   selectedMuscle: 'full',
   selectedWeight: 'usual',
-  history: [
-    { day: 0, modal: 'crossfit',  intensity: 'heavy', duration: 60, muscle: 'full',  color: '#e8ff47' },
-    { day: 1, modal: 'corrida',   intensity: 'normal', duration: 45, muscle: null,   color: '#3affb8' },
-    { day: 2, modal: 'capoeira',  intensity: 'heavy', duration: 90, muscle: null,    color: '#c47aff' },
-    { day: 3, modal: 'academia',  intensity: 'heavy', duration: 60, muscle: 'lower', color: '#e8ff47' },
-    { day: 4, modal: null, color: null },
-    { day: 5, modal: null, color: null },
-    { day: 6, modal: null, color: null },
-  ]
+  weekOffset: 0,      // 0 = current week, -1 = last week, etc.
+  selectedDayIndex: null,
+  workouts: {},       // keyed by 'YYYY-MM-DD'
 };
+
+// ===========================
+// DATE HELPERS
+// ===========================
+
+function getWeekDates(offset) {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0=Sun
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - dayOfWeek + (offset * 7));
+  const week = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    week.push(d);
+  }
+  return week;
+}
+
+function dateKey(date) {
+  return date.toISOString().split('T')[0];
+}
+
+function todayKey() {
+  return dateKey(new Date());
+}
 
 // ===========================
 // NAVIGATION
@@ -111,45 +131,142 @@ function updateNavButtons(screenId) {
 // ===========================
 
 function renderWeekStrip() {
-  const strip = document.getElementById('weekStrip');
-  if (!strip) return;
-  const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  const today = 4; // friday = index 4
+  const container = document.getElementById('weekContainer');
+  if (!container) return;
 
-  strip.innerHTML = state.history.map((d, i) => {
-    const mod = d.modal ? MODALITIES.find(m => m.id === d.modal) : null;
-    const isToday = i === today;
-    const hasLoad = !!mod;
-    const isHighLoad = d.intensity === 'heavy';
+  const weekDates = getWeekDates(state.weekOffset);
+  const todayStr = todayKey();
+  const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+  // Week header: range label + nav arrows
+  const first = weekDates[0];
+  const last  = weekDates[6];
+  const fmtOpts = { day: '2-digit', month: 'short' };
+  const rangeLabel = state.weekOffset === 0
+    ? 'Esta semana'
+    : state.weekOffset === -1
+      ? 'Semana passada'
+      : `${first.toLocaleDateString('pt-BR', fmtOpts)} – ${last.toLocaleDateString('pt-BR', fmtOpts)}`;
+
+  const strip = weekDates.map((date, i) => {
+    const key = dateKey(date);
+    const workout = state.workouts[key];
+    const mod = workout ? MODALITIES.find(m => m.id === workout.modal) : null;
+    const isToday = key === todayStr;
+    const isSelected = state.selectedDayIndex === i && state.weekOffset === 0;
+    const isHighLoad = workout && workout.intensity === 'heavy';
+    const dayNum = String(date.getDate()).padStart(2, '0');
 
     return `
-      <div class="day-block ${isToday ? 'today' : ''} ${isHighLoad ? 'loaded' : ''}">
-        <div class="day-name">${days[i]}</div>
+      <div class="day-block ${isToday ? 'today' : ''} ${isHighLoad ? 'loaded' : ''} ${isSelected ? 'selected-day' : ''}"
+           onclick="selectDay(${i})">
+        <div class="day-name">${dayNames[date.getDay()]}</div>
+        <div class="day-num">${dayNum}</div>
         <div class="day-dot-wrap">
-          ${mod ? `<div class="day-dot" style="background:${mod.color}; width:8px; height:8px;"></div>` : '<div style="width:8px;height:8px;"></div>'}
-          ${mod ? `<div style="font-size:0.55rem;color:var(--text-dim);margin-top:2px">${mod.emoji}</div>` : ''}
+          ${mod
+            ? `<div class="day-dot" style="background:${mod.color};width:8px;height:8px;"></div>
+               <div style="font-size:0.6rem;color:var(--text-muted);margin-top:2px">${mod.emoji}</div>`
+            : `<div style="width:8px;height:8px;opacity:0"></div>`}
         </div>
       </div>
     `;
   }).join('');
+
+  container.innerHTML = `
+    <div class="week-nav-row">
+      <button class="week-nav-btn" onclick="shiftWeek(-1)">←</button>
+      <span class="week-range-label">${rangeLabel}</span>
+      <button class="week-nav-btn ${state.weekOffset >= 0 ? 'disabled' : ''}"
+              onclick="shiftWeek(1)" ${state.weekOffset >= 0 ? 'disabled' : ''}>→</button>
+    </div>
+    <div class="week-strip">${strip}</div>
+  `;
+
+  // Day detail panel
+  renderDayDetail();
+}
+
+function shiftWeek(dir) {
+  if (dir === 1 && state.weekOffset >= 0) return;
+  state.weekOffset += dir;
+  state.selectedDayIndex = null;
+  renderWeekStrip();
+}
+
+function selectDay(i) {
+  state.selectedDayIndex = (state.selectedDayIndex === i) ? null : i;
+  renderWeekStrip();
+}
+
+function renderDayDetail() {
+  const el = document.getElementById('dayDetail');
+  if (!el) return;
+
+  if (state.selectedDayIndex === null) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const weekDates = getWeekDates(state.weekOffset);
+  const date = weekDates[state.selectedDayIndex];
+  const key = dateKey(date);
+  const workout = state.workouts[key];
+
+  const label = date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+
+  if (!workout) {
+    el.innerHTML = `
+      <div class="day-detail-card empty">
+        <div class="dd-date">${label}</div>
+        <div class="dd-empty">Nenhum treino registrado neste dia.</div>
+        <button class="dd-add-btn" onclick="goTo('screen-checkin')">+ Registrar treino</button>
+      </div>
+    `;
+    return;
+  }
+
+  const mod = MODALITIES.find(m => m.id === workout.modal);
+  const intensityLabel = { light:'Leve', normal:'Normal', heavy:'Pesado', pr:'PR 🏆' };
+  const muscleLabel    = { lower:'Membros Inferiores', upper:'Membros Superiores', full:'Full Body', core:'Core' };
+
+  el.innerHTML = `
+    <div class="day-detail-card" style="--dd-color:${mod ? mod.color : 'var(--accent)'}">
+      <div class="dd-date">${label}</div>
+      <div class="dd-mod-row">
+        <span class="dd-emoji">${mod ? mod.emoji : '❓'}</span>
+        <div>
+          <div class="dd-mod-name">${mod ? mod.name : workout.modal}</div>
+          <div class="dd-meta">${workout.duration} min · ${intensityLabel[workout.intensity] || workout.intensity}${workout.muscle ? ' · ' + (muscleLabel[workout.muscle] || workout.muscle) : ''}</div>
+        </div>
+      </div>
+      ${workout.note ? `<div class="dd-note">${workout.note}</div>` : ''}
+    </div>
+  `;
 }
 
 function renderMyMods() {
   const el = document.getElementById('myModBlocks');
   if (!el) return;
 
-  const loadMap = { corrida: 65, crossfit: 85, capoeira: 70 };
+  if (state.myModalityIds.length === 0) {
+    el.innerHTML = `
+      <div class="empty-mods-hint" onclick="goTo('screen-modalities')">
+        <span class="empty-mods-icon">＋</span>
+        <span>Adicione suas modalidades</span>
+      </div>
+    `;
+    return;
+  }
 
   el.innerHTML = state.myModalityIds.map(id => {
     const mod = MODALITIES.find(m => m.id === id);
     if (!mod) return '';
-    const load = loadMap[id] || 40;
     return `
       <div class="mod-block selected" style="--mod-color:${mod.color}" onclick="goTo('screen-analysis')">
         <span class="mod-emoji">${mod.emoji}</span>
         <div class="mod-name">${mod.name}</div>
         <div class="mod-load-bar">
-          <div class="mod-load-fill" style="width:${load}%;background:${mod.color}"></div>
+          <div class="mod-load-fill" style="width:0%;background:${mod.color}"></div>
         </div>
       </div>
     `;
@@ -218,7 +335,7 @@ function resetCheckin() {
   document.getElementById('step3').classList.add('hidden');
   document.getElementById('stepForce').classList.add('hidden');
   document.getElementById('step4').classList.add('hidden');
-  document.getElementById('btnSave').classList.add('hidden');
+  document.getElementById('saveBar').classList.add('hidden');
 
   renderCheckinMods();
 }
@@ -257,7 +374,7 @@ function selectMod(id, el) {
     }
 
     document.getElementById('step4').classList.remove('hidden');
-    document.getElementById('btnSave').classList.remove('hidden');
+    document.getElementById('saveBar').classList.remove('hidden');
   }, 150);
 }
 
@@ -290,20 +407,245 @@ function saveCheckin() {
     showToast('Selecione uma modalidade');
     return;
   }
+  const key = todayKey();
+  const note = document.querySelector('.note-input') ? document.querySelector('.note-input').value : '';
+  state.workouts[key] = {
+    modal:     state.selectedModalityId,
+    duration:  state.selectedDuration,
+    intensity: state.selectedIntensity,
+    muscle:    state.selectedMuscle,
+    weight:    state.selectedWeight,
+    note:      note,
+  };
   showToast('Treino registrado ✓');
-  setTimeout(() => goTo('screen-home'), 700);
+  setTimeout(() => { goTo('screen-home'); }, 700);
 }
 
 // ===========================
-// FEELING BUTTONS
+// FEELING + HOME DYNAMIC RENDER
 // ===========================
 
-document.querySelectorAll('.feeling-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.feeling-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+function setFeeling(btn, feel) {
+  document.querySelectorAll('.feeling-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.todayFeeling = feel;
+  // update context message based on feeling + load
+  renderStatusContext();
+}
+
+// ===========================
+// LOAD CALCULATION
+// ===========================
+
+// Intensity weights
+const INTENSITY_SCORE = { light: 1, normal: 2, heavy: 3, pr: 3.5 };
+// Duration brackets
+function durationScore(min) {
+  if (min <= 30) return 0.6;
+  if (min <= 45) return 0.8;
+  if (min <= 60) return 1.0;
+  if (min <= 90) return 1.3;
+  return 1.6;
+}
+// Impact multiplier
+const IMPACT_SCORE = { lower: 1.2, upper: 0.9, full: 1.1, core: 0.8 };
+
+function calcWeekLoad() {
+  // Look at last 7 days
+  const scores = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = dateKey(d);
+    const w = state.workouts[key];
+    if (!w) { scores.push(0); continue; }
+    const intScore  = INTENSITY_SCORE[w.intensity] || 2;
+    const durScore  = durationScore(w.duration || 60);
+    const impScore  = IMPACT_SCORE[w.muscle] || 1.0;
+    scores.push(intScore * durScore * impScore);
+  }
+  // Max possible per day ~= 3.5 * 1.6 * 1.2 = 6.72; week max ~= 47
+  const total = scores.reduce((a, b) => a + b, 0);
+  const pct   = Math.min(100, Math.round((total / 28) * 100)); // 28 = moderate full week
+  return { pct, scores, total };
+}
+
+function loadZone(pct) {
+  if (pct < 35) return 'rest';
+  if (pct < 65) return 'ok';
+  if (pct < 85) return 'attention';
+  return 'risk';
+}
+
+function zoneLabel(zone) {
+  return { rest: 'Descansada', ok: 'OK', attention: 'Atenção', risk: 'Risco' }[zone];
+}
+function zoneColor(zone) {
+  return { rest: 'var(--accent3)', ok: 'var(--accent3)', attention: 'var(--yellow)', risk: 'var(--red)' }[zone];
+}
+
+// ===========================
+// OVERLOAD PATTERN DETECTION
+// ===========================
+
+function detectAlert(scores) {
+  // Count consecutive heavy days
+  const recentDays = [];
+  for (let i = 3; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    recentDays.push(state.workouts[dateKey(d)]);
+  }
+
+  const heavyConsec = recentDays.filter(w => w && (w.intensity === 'heavy' || w.intensity === 'pr')).length;
+  const lowerDays   = recentDays.filter(w => w && (w.muscle === 'lower' || w.muscle === 'full' ||
+                        (w.modal && ['corrida','bike','futebol','basquete','capoeira','jiujitsu','muaythai','volei','handebol','beachtennis','tenis','padel'].includes(w.modal)))).length;
+
+  if (heavyConsec >= 3) {
+    return {
+      title: `${heavyConsec} treinos pesados consecutivos`,
+      text: `Você acumulou treinos de alta intensidade nos últimos ${heavyConsec} dias sem descanso suficiente. Isso aumenta o risco de fadiga e lesão.`
+    };
+  }
+  if (lowerDays >= 3) {
+    return {
+      title: 'Membros inferiores sobrecarregados',
+      text: `Pernas e glúteos foram exigidos em ${lowerDays} dos últimos 4 dias. Considere um treino de membros superiores ou descanso ativo.`
+    };
+  }
+  return null;
+}
+
+// ===========================
+// CONTEXT MESSAGE
+// ===========================
+
+function todayContext() {
+  const todayW   = state.workouts[todayKey()];
+  const { pct }  = calcWeekLoad();
+  const zone     = loadZone(pct);
+  const feel     = state.todayFeeling;
+
+  // No workouts at all this week
+  const hasAny = Object.keys(state.workouts).length > 0;
+  if (!hasAny) {
+    return { label: 'Bem-vinda de volta', msg: 'Registre seu primeiro treino para começar a acompanhar sua performance.' };
+  }
+
+  // Today already has a workout
+  if (todayW) {
+    const mod = MODALITIES.find(m => m.id === todayW.modal);
+    return {
+      label: 'Treino registrado hoje',
+      msg: `${mod ? mod.emoji + ' ' + mod.name : 'Treino'} — ${todayW.duration} min. ${zone === 'risk' ? 'Sua carga está alta, priorize a recuperação.' : 'Boa sessão!'}`
+    };
+  }
+
+  // Has feeling input
+  if (feel === 'tired' && zone === 'risk') {
+    return { label: 'Sinal de alerta', msg: 'Você está cansada e a carga da semana está alta. Hoje pode ser um bom dia de descanso ativo.' };
+  }
+  if (feel === 'tired') {
+    return { label: 'Como você está hoje', msg: 'Cansaço pode ser sinal que o corpo pede recuperação. Avalie a intensidade antes de treinar.' };
+  }
+  if (feel === 'great' && zone === 'rest') {
+    return { label: 'Pronta para treinar', msg: 'Sua carga está baixa e você está disposta — bom momento para um treino mais intenso.' };
+  }
+
+  // Zone-based default
+  const zoneMsg = {
+    rest:      'Sua semana está tranquila. Como pretende treinar hoje?',
+    ok:        'Carga equilibrada. Boa semana até agora.',
+    attention: 'Carga acumulando. Avalie a intensidade do treino de hoje.',
+    risk:      'Carga elevada esta semana. Considere descanso ou treino leve hoje.',
+  };
+  return { label: 'Como você está hoje', msg: zoneMsg[zone] };
+}
+
+// ===========================
+// RENDER HOME STATUS
+// ===========================
+
+function renderStatusContext() {
+  const ctx = todayContext();
+  const el  = document.getElementById('statusContext');
+  if (el) {
+    el.innerHTML = `<div class="sc-label">${ctx.label}</div><p class="sc-msg">${ctx.msg}</p>`;
+  }
+}
+
+function renderLoadBar() {
+  const { pct } = calcWeekLoad();
+  const zone    = loadZone(pct);
+  const bar     = document.getElementById('loadBar');
+  const pill    = document.getElementById('loadStatePill');
+
+  // Animate bar
+  if (bar) {
+    bar.style.width = '0%';
+    setTimeout(() => {
+      bar.style.width = pct + '%';
+      bar.style.background = pct < 35
+        ? 'linear-gradient(90deg, var(--accent3), var(--accent3))'
+        : pct < 65
+          ? 'linear-gradient(90deg, var(--accent3), var(--yellow))'
+          : pct < 85
+            ? 'linear-gradient(90deg, var(--accent3), var(--yellow) 60%, var(--red))'
+            : 'linear-gradient(90deg, var(--accent3), var(--yellow) 40%, var(--red) 75%)';
+    }, 300);
+  }
+
+  // Zone labels — highlight active
+  ['rest','attention','risk'].forEach(z => {
+    const el = document.getElementById('lz-' + z);
+    if (el) el.classList.remove('active-lz');
   });
-});
+  const activeId = zone === 'ok' ? 'lz-rest' : 'lz-' + zone;
+  const activeEl = document.getElementById(activeId);
+  if (activeEl) activeEl.classList.add('active-lz');
+
+  // Pill showing state + pct
+  if (pill) {
+    pill.textContent = zoneLabel(zone) + (pct > 0 ? ' · ' + pct + '%' : '');
+    pill.style.background = zoneColor(zone) + '22';
+    pill.style.color       = zoneColor(zone);
+    pill.style.borderColor = zoneColor(zone) + '55';
+  }
+}
+
+function renderAlertCard() {
+  const { scores } = calcWeekLoad();
+  const alert = detectAlert(scores);
+  const card  = document.getElementById('alertCard');
+  if (!card) return;
+
+  if (alert) {
+    card.classList.remove('hidden');
+    document.getElementById('alertTitle').textContent = alert.title;
+    document.getElementById('alertText').textContent  = alert.text;
+  } else {
+    card.classList.add('hidden');
+  }
+}
+
+function renderHome() {
+  // top date
+  const dateEl = document.getElementById('topDate');
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  }
+  // restore today's feeling if saved
+  if (state.todayFeeling) {
+    document.querySelectorAll('.feeling-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.feel === state.todayFeeling);
+    });
+  }
+  renderStatusContext();
+  renderLoadBar();
+  renderAlertCard();
+  renderWeekStrip();
+  renderMyMods();
+}
 
 // ===========================
 // TOAST
@@ -319,17 +661,6 @@ function showToast(msg) {
   toast.textContent = msg;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 2200);
-}
-
-// ===========================
-// ANIMATE LOAD BAR
-// ===========================
-
-function animateLoadBar() {
-  const bar = document.getElementById('loadBar');
-  if (!bar) return;
-  bar.style.width = '0%';
-  setTimeout(() => { bar.style.width = '72%'; }, 300);
 }
 
 // ===========================
@@ -498,20 +829,7 @@ const PR_CATEGORIES = [
 // PR State
 let prState = {
   activeCat: 'levantamento',
-  records: {
-    // pre-populated sample data
-    back_squat:   { value: 102.06, unit: 'kg', date: '2026-03-15', isNew: true },
-    deadlift:     { value: 134.72, unit: 'kg', date: '2026-02-20', isNew: false },
-    bench_press:  { value: 38.56,  unit: 'kg', date: '2026-01-10', isNew: false },
-    snatch:       { value: 47.00,  unit: 'kg', date: '2026-03-28', isNew: true },
-    clean_jerk:   { value: 65.00,  unit: 'kg', date: '2026-02-14', isNew: false },
-    muscle_up:    { value: 8,      unit: 'reps', date: '2026-03-01', isNew: false },
-    pull_up:      { value: 15,     unit: 'reps', date: '2026-03-20', isNew: true },
-    run_5k:       { value: 24.5,   unit: 'min', date: '2026-03-10', isNew: false },
-    run_10k:      { value: 51.2,   unit: 'min', date: '2026-02-28', isNew: false },
-    parafuso:     { value: 3,      unit: 'nível', date: '2026-01-15', isNew: false },
-    mortal:       { value: 2,      unit: 'nível', date: '2026-02-05', isNew: false },
-  },
+  records: {},
   modalCat: 'levantamento',
   modalMove: null,
   modalUnit: 'kg',
@@ -722,20 +1040,22 @@ function savePR() {
 // ===========================
 
 window.addEventListener('DOMContentLoaded', () => {
-  renderWeekStrip();
-  renderMyMods();
+  // Initialize today feeling state
+  state.todayFeeling = null;
+
+  renderHome();
   renderAllModalities();
   renderCheckinMods();
   renderPRTabs();
   renderPRList();
 
-  // Animate load bar when home becomes visible
-  const observer = new MutationObserver(() => {
+  // Re-render home every time it becomes active (e.g. returning from checkin)
+  const homeObserver = new MutationObserver(() => {
     if (document.getElementById('screen-home').classList.contains('active')) {
-      animateLoadBar();
+      renderHome();
     }
   });
-  observer.observe(document.getElementById('screen-home'), { attributes: true, attributeFilter: ['class'] });
+  homeObserver.observe(document.getElementById('screen-home'), { attributes: true, attributeFilter: ['class'] });
 
   const prObserver = new MutationObserver(() => {
     if (document.getElementById('screen-pr').classList.contains('active')) {
