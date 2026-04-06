@@ -62,7 +62,8 @@ let state = {
   selectedWeight: 'usual',
   weekOffset: 0,      // 0 = current week, -1 = last week, etc.
   selectedDayIndex: null,
-  workouts: {},       // keyed by 'YYYY-MM-DD'
+  workouts: {},       // keyed by 'YYYY-MM-DD' -> array of workouts
+  checkinDate: null,  // date string being registered (defaults to today)
 };
 
 // ===========================
@@ -151,7 +152,9 @@ function renderWeekStrip() {
   const strip = weekDates.map((date, i) => {
     const key = dateKey(date);
     const workout = state.workouts[key];
-    const mod = workout ? MODALITIES.find(m => m.id === workout.modal) : null;
+    const workoutList = state.workouts[key] || [];
+  const workout = workoutList[0] || null;  // show first for now; detail lists all
+  const mod = workout ? MODALITIES.find(m => m.id === workout.modal) : null;
     const isToday = key === todayStr;
     const isSelected = state.selectedDayIndex === i && state.weekOffset === 0;
     const isHighLoad = workout && workout.intensity === 'heavy';
@@ -163,10 +166,12 @@ function renderWeekStrip() {
         <div class="day-name">${dayNames[date.getDay()]}</div>
         <div class="day-num">${dayNum}</div>
         <div class="day-dot-wrap">
-          ${mod
-            ? `<div class="day-dot" style="background:${mod.color};width:8px;height:8px;"></div>
-               <div style="font-size:0.6rem;color:var(--text-muted);margin-top:2px">${mod.emoji}</div>`
-            : `<div style="width:8px;height:8px;opacity:0"></div>`}
+          ${workoutList.length > 0
+            ? workoutList.slice(0, 3).map(w => {
+                const wmod = MODALITIES.find(m => m.id === w.modal);
+                return `<div class="day-dot" style="background:${wmod ? wmod.color : 'var(--accent)'};width:6px;height:6px;border-radius:50%;"></div>`;
+              }).join('')
+            : `<div style="width:6px;height:6px;opacity:0"></div>`}
         </div>
       </div>
     `;
@@ -228,18 +233,26 @@ function renderDayDetail() {
   const mod = MODALITIES.find(m => m.id === workout.modal);
   const intensityLabel = { light:'Leve', normal:'Normal', heavy:'Pesado', pr:'PR 🏆' };
   const muscleLabel    = { lower:'Membros Inferiores', upper:'Membros Superiores', full:'Full Body', core:'Core' };
+  const allWorkouts    = state.workouts[key] || [];
+
+  const workoutsHTML = allWorkouts.map(w => {
+    const m = MODALITIES.find(mo => mo.id === w.modal);
+    return `
+      <div class="dd-mod-row">
+        <span class="dd-emoji">${m ? m.emoji : '❓'}</span>
+        <div>
+          <div class="dd-mod-name">${m ? m.name : w.modal}</div>
+          <div class="dd-meta">${w.duration} min · ${intensityLabel[w.intensity] || w.intensity}${w.muscle ? ' · ' + (muscleLabel[w.muscle] || w.muscle) : ''}</div>
+          ${w.note ? `<div class="dd-note">${w.note}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('<hr class="dd-divider">');
 
   el.innerHTML = `
     <div class="day-detail-card" style="--dd-color:${mod ? mod.color : 'var(--accent)'}">
       <div class="dd-date">${label}</div>
-      <div class="dd-mod-row">
-        <span class="dd-emoji">${mod ? mod.emoji : '❓'}</span>
-        <div>
-          <div class="dd-mod-name">${mod ? mod.name : workout.modal}</div>
-          <div class="dd-meta">${workout.duration} min · ${intensityLabel[workout.intensity] || workout.intensity}${workout.muscle ? ' · ' + (muscleLabel[workout.muscle] || workout.muscle) : ''}</div>
-        </div>
-      </div>
-      ${workout.note ? `<div class="dd-note">${workout.note}</div>` : ''}
+      ${workoutsHTML}
     </div>
   `;
 }
@@ -322,6 +335,37 @@ function saveModalities() {
 // ===========================
 // RENDER — CHECK-IN
 // ===========================
+
+function renderCheckinDateBar() {
+  const el = document.getElementById('checkinDateScroll');
+  if (!el) return;
+  const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const chips = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key  = dateKey(d);
+    const name = dayNames[d.getDay()];
+    const num  = String(d.getDate()).padStart(2, '0');
+    const isSelected = (state.checkinDate || todayKey()) === key;
+    const isToday = key === todayKey();
+    chips.push(`
+      <button class="date-chip ${isSelected ? 'active' : ''}"
+              data-key="${key}"
+              onclick="selectCheckinDate('${key}', this)">
+        <span class="dc-name">${isToday ? 'Hoje' : name}</span>
+        <span class="dc-num">${num}</span>
+      </button>
+    `);
+  }
+  el.innerHTML = chips.join('');
+}
+
+function selectCheckinDate(key, el) {
+  state.checkinDate = key;
+  document.querySelectorAll('.date-chip').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
 
 function resetCheckin() {
   state.selectedModalityId = null;
@@ -407,16 +451,20 @@ function saveCheckin() {
     showToast('Selecione uma modalidade');
     return;
   }
-  const key = todayKey();
+  const key  = state.checkinDate || todayKey();
   const note = document.querySelector('.note-input') ? document.querySelector('.note-input').value : '';
-  state.workouts[key] = {
+  const workout = {
     modal:     state.selectedModalityId,
     duration:  state.selectedDuration,
     intensity: state.selectedIntensity,
     muscle:    state.selectedMuscle,
     weight:    state.selectedWeight,
     note:      note,
+    savedAt:   Date.now(),
   };
+  // Push to array — multiple workouts per day allowed
+  if (!state.workouts[key]) state.workouts[key] = [];
+  state.workouts[key].push(workout);
   showToast('Treino registrado ✓');
   setTimeout(() => { goTo('screen-home'); }, 700);
 }
@@ -451,22 +499,26 @@ function durationScore(min) {
 const IMPACT_SCORE = { lower: 1.2, upper: 0.9, full: 1.1, core: 0.8 };
 
 function calcWeekLoad() {
-  // Look at last 7 days
+  // Look at last 7 days — workouts[key] is now an array
   const scores = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const key = dateKey(d);
-    const w = state.workouts[key];
-    if (!w) { scores.push(0); continue; }
-    const intScore  = INTENSITY_SCORE[w.intensity] || 2;
-    const durScore  = durationScore(w.duration || 60);
-    const impScore  = IMPACT_SCORE[w.muscle] || 1.0;
-    scores.push(intScore * durScore * impScore);
+    const key  = dateKey(d);
+    const list = state.workouts[key];
+    if (!list || list.length === 0) { scores.push(0); continue; }
+    // Sum all workouts for that day
+    let dayScore = 0;
+    list.forEach(w => {
+      const intScore = INTENSITY_SCORE[w.intensity] || 2;
+      const durScore = durationScore(w.duration || 60);
+      const impScore = IMPACT_SCORE[w.muscle]     || 1.0;
+      dayScore += intScore * durScore * impScore;
+    });
+    scores.push(dayScore);
   }
-  // Max possible per day ~= 3.5 * 1.6 * 1.2 = 6.72; week max ~= 47
   const total = scores.reduce((a, b) => a + b, 0);
-  const pct   = Math.min(100, Math.round((total / 28) * 100)); // 28 = moderate full week
+  const pct   = Math.min(100, Math.round((total / 28) * 100));
   return { pct, scores, total };
 }
 
@@ -489,22 +541,27 @@ function zoneColor(zone) {
 // ===========================
 
 function detectAlert(scores) {
-  // Count consecutive heavy days
-  const recentDays = [];
-  for (let i = 3; i >= 0; i--) {
+  const lowerModalIds = ['corrida','bike','futebol','basquete','capoeira','jiujitsu','muaythai','volei','handebol','beachtennis','tenis','padel'];
+  let heavyDays = 0;
+  let lowerDays = 0;
+
+  for (let i = 0; i <= 3; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    recentDays.push(state.workouts[dateKey(d)]);
+    const list = state.workouts[dateKey(d)];
+    if (!list || list.length === 0) continue;
+    const hasHeavy = list.some(w => w.intensity === 'heavy' || w.intensity === 'pr');
+    const hasLower = list.some(w =>
+      w.muscle === 'lower' || w.muscle === 'full' || lowerModalIds.includes(w.modal)
+    );
+    if (hasHeavy) heavyDays++;
+    if (hasLower) lowerDays++;
   }
 
-  const heavyConsec = recentDays.filter(w => w && (w.intensity === 'heavy' || w.intensity === 'pr')).length;
-  const lowerDays   = recentDays.filter(w => w && (w.muscle === 'lower' || w.muscle === 'full' ||
-                        (w.modal && ['corrida','bike','futebol','basquete','capoeira','jiujitsu','muaythai','volei','handebol','beachtennis','tenis','padel'].includes(w.modal)))).length;
-
-  if (heavyConsec >= 3) {
+  if (heavyDays >= 3) {
     return {
-      title: `${heavyConsec} treinos pesados consecutivos`,
-      text: `Você acumulou treinos de alta intensidade nos últimos ${heavyConsec} dias sem descanso suficiente. Isso aumenta o risco de fadiga e lesão.`
+      title: `${heavyDays} dias pesados consecutivos`,
+      text: `Você acumulou treinos de alta intensidade em ${heavyDays} dos últimos 4 dias sem descanso suficiente. Isso aumenta o risco de fadiga e lesão.`
     };
   }
   if (lowerDays >= 3) {
@@ -1068,17 +1125,18 @@ function savePR() {
 // ===========================
 
 function getRecentWorkouts(days) {
-  // Returns array of {date, workout, mod} for last N days, most recent first
+  // Returns flat array of {date, workout, mod} for last N days, most recent first
   const result = [];
   for (let i = 0; i < days; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const key = dateKey(d);
-    const w = state.workouts[key];
-    if (w) {
+    const key  = dateKey(d);
+    const list = state.workouts[key];
+    if (!list || list.length === 0) continue;
+    list.forEach(w => {
       const mod = MODALITIES.find(m => m.id === w.modal);
-      result.push({ key, date: d, workout: w, mod });
-    }
+      result.push({ key, date: new Date(d), workout: w, mod });
+    });
   }
   return result;
 }
