@@ -157,14 +157,13 @@ function renderWeekStrip() {
       : `${first.toLocaleDateString('pt-BR', fmtOpts)} – ${last.toLocaleDateString('pt-BR', fmtOpts)}`;
 
   const strip = weekDates.map((date, i) => {
-    const key = dateKey(date);
-    const workout = state.workouts[key];
-    const workoutList = state.workouts[key] || [];
-  const workout = workoutList[0] || null;  // show first for now; detail lists all
-  const mod = workout ? MODALITIES.find(m => m.id === workout.modal) : null;
-    const isToday = key === todayStr;
-    const isSelected = state.selectedDayIndex === i && state.weekOffset === 0;
-    const isHighLoad = workout && workout.intensity === 'heavy';
+    const key         = dateKey(date);
+    const workoutList  = state.workouts[key] || [];
+    const workout      = workoutList[0] || null;
+    const mod          = workout ? MODALITIES.find(m => m.id === workout.modal) : null;
+    const isToday      = key === todayStr;
+    const isSelected   = state.selectedDayIndex === i && state.weekOffset === 0;
+    const isHighLoad   = workoutList.some(w => w.intensity === 'heavy' || w.intensity === 'pr');
     const dayNum = String(date.getDate()).padStart(2, '0');
 
     return `
