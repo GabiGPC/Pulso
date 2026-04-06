@@ -1409,3 +1409,57 @@ html, body {
   border-top: 1px solid var(--border);
   margin: 0.7rem 0;
 }
+
+/* ===========================
+   DAY DETAIL — EDIT/DELETE
+   =========================== */
+.dd-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+.dd-header-row .dd-date { margin-bottom: 0; }
+
+.dd-add-btn.inline {
+  background: none;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-body);
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.dd-add-btn.inline:hover { background: #e8ff4714; }
+
+.dd-workout-item { padding: 0.1rem 0; }
+
+.dd-mod-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+.dd-mod-info { flex: 1; }
+
+.dd-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.dd-action-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.18s;
+}
+.dd-action-btn.edit:hover  { border-color: var(--accent); background: #e8ff4714; }
+.dd-action-btn.delete:hover { border-color: var(--red); background: #ff5c3a14; }
