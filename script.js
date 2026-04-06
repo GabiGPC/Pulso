@@ -1,1067 +1,1346 @@
 /* ===========================
-   PULSO — App Logic
+   PULSO — Design System
    =========================== */
 
-// ===========================
-// DATA
-// ===========================
-
-const MODALITIES = [
-  // Força
-  { id: 'academia',   name: 'Academia',   emoji: '🏋️', cat: 'forca',    color: '#e8ff47', hasWeight: true,  cardio: false, impact: 'lower' },
-  { id: 'crossfit',   name: 'Crossfit',   emoji: '🔥', cat: 'forca',    color: '#e8ff47', hasWeight: true,  cardio: true,  impact: 'full'  },
-  { id: 'calistenia', name: 'Calistenia', emoji: '🤸', cat: 'forca',    color: '#e8ff47', hasWeight: false, cardio: false, impact: 'upper' },
-
-  // Cardio
-  { id: 'corrida',   name: 'Corrida',   emoji: '🏃', cat: 'cardio', color: '#3affb8', hasWeight: false, cardio: true, impact: 'lower' },
-  { id: 'bike',      name: 'Bike',      emoji: '🚴', cat: 'cardio', color: '#3affb8', hasWeight: false, cardio: true, impact: 'lower' },
-  { id: 'natacao',   name: 'Natação',   emoji: '🏊', cat: 'cardio', color: '#3affb8', hasWeight: false, cardio: true, impact: 'full'  },
-  { id: 'remo',      name: 'Remo',      emoji: '🚣', cat: 'cardio', color: '#3affb8', hasWeight: false, cardio: true, impact: 'full'  },
-
-  // Esportes coletivos
-  { id: 'futebol',   name: 'Futebol',   emoji: '⚽', cat: 'coletivo', color: '#ff9f47', hasWeight: false, cardio: true, impact: 'lower' },
-  { id: 'volei',     name: 'Vôlei',     emoji: '🏐', cat: 'coletivo', color: '#ff9f47', hasWeight: false, cardio: true, impact: 'full'  },
-  { id: 'basquete',  name: 'Basquete',  emoji: '🏀', cat: 'coletivo', color: '#ff9f47', hasWeight: false, cardio: true, impact: 'lower' },
-  { id: 'handebol',  name: 'Handebol',  emoji: '🤾', cat: 'coletivo', color: '#ff9f47', hasWeight: false, cardio: true, impact: 'full'  },
-  { id: 'beachtennis', name: 'Beach Tennis', emoji: '🏖️', cat: 'coletivo', color: '#ff9f47', hasWeight: false, cardio: true, impact: 'full' },
-
-  // Lutas / artes marciais
-  { id: 'capoeira',  name: 'Capoeira',  emoji: '🥋', cat: 'lutas', color: '#c47aff', hasWeight: false, cardio: true, impact: 'full'  },
-  { id: 'jiujitsu',  name: 'Jiu-jitsu', emoji: '🥊', cat: 'lutas', color: '#c47aff', hasWeight: false, cardio: true, impact: 'full'  },
-  { id: 'muaythai',  name: 'Muay Thai', emoji: '👊', cat: 'lutas', color: '#c47aff', hasWeight: false, cardio: true, impact: 'full'  },
-  { id: 'boxe',      name: 'Boxe',      emoji: '🥊', cat: 'lutas', color: '#c47aff', hasWeight: false, cardio: true, impact: 'upper' },
-
-  // Raquete
-  { id: 'tenis',   name: 'Tênis',  emoji: '🎾', cat: 'raquete', color: '#ff5c3a', hasWeight: false, cardio: true, impact: 'full'  },
-  { id: 'padel',   name: 'Padel',  emoji: '🏓', cat: 'raquete', color: '#ff5c3a', hasWeight: false, cardio: true, impact: 'full'  },
-  { id: 'squash',  name: 'Squash', emoji: '🎱', cat: 'raquete', color: '#ff5c3a', hasWeight: false, cardio: true, impact: 'full'  },
-
-  // Outros
-  { id: 'yoga',      name: 'Yoga',      emoji: '🧘', cat: 'outros', color: '#47c4ff', hasWeight: false, cardio: false, impact: 'full'  },
-  { id: 'pilates',   name: 'Pilates',   emoji: '🌀', cat: 'outros', color: '#47c4ff', hasWeight: false, cardio: false, impact: 'core'  },
-  { id: 'danca',     name: 'Dança',     emoji: '💃', cat: 'outros', color: '#47c4ff', hasWeight: false, cardio: true,  impact: 'full'  },
-  { id: 'escalada',  name: 'Escalada',  emoji: '🧗', cat: 'outros', color: '#47c4ff', hasWeight: false, cardio: false, impact: 'upper' },
-];
-
-const CATEGORIES = [
-  { id: 'forca',    label: 'Força',             emoji: '🏋️' },
-  { id: 'cardio',   label: 'Cardio',            emoji: '🏃' },
-  { id: 'coletivo', label: 'Esportes Coletivos', emoji: '⚽' },
-  { id: 'lutas',    label: 'Lutas & Artes Marciais', emoji: '🥋' },
-  { id: 'raquete',  label: 'Raquete',           emoji: '🎾' },
-  { id: 'outros',   label: 'Outros',            emoji: '🧘' },
-];
-
-// State
-let state = {
-  myModalityIds: [],
-  selectedModalityId: null,
-  selectedDuration: 60,
-  selectedIntensity: 'normal',
-  selectedMuscle: 'full',
-  selectedWeight: 'usual',
-  weekOffset: 0,      // 0 = current week, -1 = last week, etc.
-  selectedDayIndex: null,
-  workouts: {},       // keyed by 'YYYY-MM-DD'
-};
-
-// ===========================
-// DATE HELPERS
-// ===========================
-
-function getWeekDates(offset) {
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0=Sun
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - dayOfWeek + (offset * 7));
-  const week = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    week.push(d);
-  }
-  return week;
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --surface2: #18181f;
+  --border: #ffffff12;
+  --accent: #e8ff47;         /* electric lime — movimento, energia */
+  --accent2: #ff5c3a;        /* laranja-fogo — alerta, intensidade */
+  --accent3: #3affb8;        /* verde-neon — saúde, OK */
+  --text: #f0f0f0;
+  --text-muted: #888;
+  --text-dim: #555;
+  --red: #ff5c3a;
+  --yellow: #ffd166;
+  --green: #3affb8;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+  --radius: 16px;
+  --radius-sm: 10px;
 }
 
-function dateKey(date) {
-  return date.toISOString().split('T')[0];
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  overflow: hidden;
 }
 
-function todayKey() {
-  return dateKey(new Date());
+/* ===========================
+   BACKGROUND PULSE RINGS
+   =========================== */
+.bg-pulse {
+  position: fixed;
+  top: -20%;
+  right: -20%;
+  width: 600px;
+  height: 600px;
+  pointer-events: none;
+  z-index: 0;
 }
 
-// ===========================
-// NAVIGATION
-// ===========================
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  opacity: 0;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: pulseRing 6s ease-out infinite;
+}
+.r1 { animation-delay: 0s; }
+.r2 { animation-delay: 2s; }
+.r3 { animation-delay: 4s; }
 
-let currentScreen = 'screen-splash';
-let prevScreen = null;
-
-function goTo(screenId) {
-  const current = document.getElementById(currentScreen);
-  const next = document.getElementById(screenId);
-  if (!next || screenId === currentScreen) return;
-
-  current.classList.remove('active');
-  current.classList.add('exit');
-  setTimeout(() => current.classList.remove('exit'), 400);
-
-  next.classList.add('active');
-  prevScreen = currentScreen;
-  currentScreen = screenId;
-
-  if (screenId === 'screen-checkin') resetCheckin();
-  updateNavButtons(screenId);
+@keyframes pulseRing {
+  0%   { opacity: 0.18; transform: translate(-50%, -50%) scale(0.2); }
+  80%  { opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
 }
 
-function goBack() {
-  if (prevScreen) goTo(prevScreen);
-  else goTo('screen-home');
+/* ===========================
+   SCREENS
+   =========================== */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(18px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  z-index: 1;
+  padding-bottom: 80px;
+}
+.screen.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0);
+}
+.screen.exit {
+  opacity: 0;
+  transform: translateY(-18px);
 }
 
-function updateNavButtons(screenId) {
-  document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.classList.remove('active');
-  });
+/* ===========================
+   SPLASH
+   =========================== */
+#screen-splash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 0;
+  background: radial-gradient(ellipse at 70% 20%, #1a1f0a 0%, var(--bg) 60%);
+}
+.splash-inner {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+.logo-icon {
+  font-size: 3.5rem;
+  color: var(--accent);
+  animation: spinPulse 4s ease-in-out infinite;
+  display: block;
+}
+@keyframes spinPulse {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.1) rotate(180deg); opacity: 0.8; }
+}
+.logo-text {
+  font-family: var(--font-display);
+  font-size: 5rem;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  line-height: 1;
+}
+.logo-sub {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  margin-top: -1rem;
 }
 
-// ===========================
-// RENDER — HOME
-// ===========================
+/* ===========================
+   HEADER
+   =========================== */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.4rem 0.8rem;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+  border-bottom: 1px solid var(--border);
+}
+.logo-sm {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+.screen-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+.back-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+.icon-btn {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 20px;
+  padding: 0.4rem 1rem;
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: transform 0.15s;
+}
+.icon-btn:active { transform: scale(0.95); }
 
-function renderWeekStrip() {
-  const container = document.getElementById('weekContainer');
-  if (!container) return;
+/* ===========================
+   BUTTONS
+   =========================== */
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius);
+  padding: 1rem 2rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  width: 100%;
+  max-width: 340px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 24px #e8ff4740;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 32px #e8ff4760; }
+.btn-primary:active { transform: scale(0.97); }
 
-  const weekDates = getWeekDates(state.weekOffset);
-  const todayStr = todayKey();
-  const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+/* ===========================
+   STATUS HERO
+   =========================== */
+.status-hero {
+  margin: 1.2rem 1.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.4rem;
+}
+.status-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+.status-feeling-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.4rem;
+}
+.feeling-btn {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.3rem;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.feeling-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #e8ff4712;
+}
+.load-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.6rem;
+}
+.load-bar-track {
+  background: var(--surface2);
+  border-radius: 20px;
+  height: 12px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+.load-bar-fill {
+  height: 100%;
+  border-radius: 20px;
+  background: linear-gradient(90deg, var(--accent3) 0%, var(--yellow) 50%, var(--red) 85%);
+  transition: width 1s cubic-bezier(.16,1,.3,1);
+  position: relative;
+}
+.load-bar-fill::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: white;
+  border-radius: 2px;
+  box-shadow: 0 0 8px white;
+}
+.load-pct {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--bg);
+  font-weight: 700;
+}
+.load-zones {
+  display: flex;
+  justify-content: space-between;
+}
+.zone {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.zone.active-zone { color: var(--red); font-weight: 700; }
 
-  // Week header: range label + nav arrows
-  const first = weekDates[0];
-  const last  = weekDates[6];
-  const fmtOpts = { day: '2-digit', month: 'short' };
-  const rangeLabel = state.weekOffset === 0
-    ? 'Esta semana'
-    : state.weekOffset === -1
-      ? 'Semana passada'
-      : `${first.toLocaleDateString('pt-BR', fmtOpts)} – ${last.toLocaleDateString('pt-BR', fmtOpts)}`;
-
-  const strip = weekDates.map((date, i) => {
-    const key = dateKey(date);
-    const workout = state.workouts[key];
-    const mod = workout ? MODALITIES.find(m => m.id === workout.modal) : null;
-    const isToday = key === todayStr;
-    const isSelected = state.selectedDayIndex === i && state.weekOffset === 0;
-    const isHighLoad = workout && workout.intensity === 'heavy';
-    const dayNum = String(date.getDate()).padStart(2, '0');
-
-    return `
-      <div class="day-block ${isToday ? 'today' : ''} ${isHighLoad ? 'loaded' : ''} ${isSelected ? 'selected-day' : ''}"
-           onclick="selectDay(${i})">
-        <div class="day-name">${dayNames[date.getDay()]}</div>
-        <div class="day-num">${dayNum}</div>
-        <div class="day-dot-wrap">
-          ${mod
-            ? `<div class="day-dot" style="background:${mod.color};width:8px;height:8px;"></div>
-               <div style="font-size:0.6rem;color:var(--text-muted);margin-top:2px">${mod.emoji}</div>`
-            : `<div style="width:8px;height:8px;opacity:0"></div>`}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  container.innerHTML = `
-    <div class="week-nav-row">
-      <button class="week-nav-btn" onclick="shiftWeek(-1)">←</button>
-      <span class="week-range-label">${rangeLabel}</span>
-      <button class="week-nav-btn ${state.weekOffset >= 0 ? 'disabled' : ''}"
-              onclick="shiftWeek(1)" ${state.weekOffset >= 0 ? 'disabled' : ''}>→</button>
-    </div>
-    <div class="week-strip">${strip}</div>
-  `;
-
-  // Day detail panel
-  renderDayDetail();
+/* ===========================
+   ALERT CARD
+   =========================== */
+.alert-card {
+  margin: 0 1.4rem 1.2rem;
+  background: #ff5c3a12;
+  border: 1px solid #ff5c3a40;
+  border-radius: var(--radius);
+  padding: 1.2rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.alert-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px;
+}
+.alert-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--red);
+  margin-bottom: 0.4rem;
+}
+.alert-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+  line-height: 1.55;
+}
+.alert-link {
+  background: none;
+  border: none;
+  color: var(--red);
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-function shiftWeek(dir) {
-  if (dir === 1 && state.weekOffset >= 0) return;
-  state.weekOffset += dir;
-  state.selectedDayIndex = null;
-  renderWeekStrip();
+/* ===========================
+   WEEK STRIP
+   =========================== */
+.week-section, .modalities-section {
+  padding: 0 1.4rem 1.2rem;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  text-transform: uppercase;
+  margin-bottom: 0.8rem;
+}
+.week-strip {
+  display: flex;
+  gap: 0.5rem;
+}
+.day-block {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.3rem;
+  text-align: center;
+  transition: all 0.2s;
+}
+.day-block.today {
+  border-color: var(--accent);
+  background: #e8ff4710;
+}
+.day-block.loaded {
+  border-color: var(--red);
+  background: #ff5c3a10;
+}
+.day-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+.day-dot-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  min-height: 30px;
+  justify-content: center;
+}
+.day-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
 }
 
-function selectDay(i) {
-  state.selectedDayIndex = (state.selectedDayIndex === i) ? null : i;
-  renderWeekStrip();
+/* ===========================
+   MODALITY BLOCKS
+   =========================== */
+.mod-blocks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+.mod-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 0.6rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(.16,1,.3,1);
+  position: relative;
+  overflow: hidden;
+}
+.mod-block::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--mod-color, var(--accent));
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.mod-block:hover::before, .mod-block.selected::before { opacity: 0.08; }
+.mod-block.selected {
+  border-color: var(--mod-color, var(--accent));
+  transform: translateY(-2px);
+}
+.mod-emoji {
+  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+.mod-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+.mod-cat-label {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 0.25rem;
+}
+.mod-load-bar {
+  margin-top: 0.5rem;
+  height: 3px;
+  background: var(--surface2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.mod-load-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--mod-color, var(--accent));
 }
 
-function renderDayDetail() {
-  const el = document.getElementById('dayDetail');
-  if (!el) return;
+/* ===========================
+   MODALITIES SCREEN
+   =========================== */
+.mod-body {
+  padding: 1.2rem 1.4rem;
+}
+.mod-intro {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+.cat-section { margin-bottom: 1.5rem; }
+.cat-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.cat-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+.cat-mod-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 0.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(.16,1,.3,1);
+  position: relative;
+  overflow: hidden;
+}
+.cat-mod-block.selected {
+  border-color: var(--mod-color, var(--accent));
+  background: color-mix(in srgb, var(--mod-color, var(--accent)) 8%, transparent);
+  transform: translateY(-2px);
+}
+.cat-mod-block .mod-emoji { font-size: 1.4rem; }
+.cat-mod-block .mod-name { font-size: 0.7rem; }
 
-  if (state.selectedDayIndex === null) {
-    el.innerHTML = '';
-    return;
-  }
+/* ===========================
+   CHECK-IN SCREEN
+   =========================== */
+.checkin-body {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.step { transition: all 0.3s ease; }
+.step.hidden { display: none; }
+.step-label {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.9rem;
+}
+.checkin-mod-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+.duration-picker {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.dur-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dur-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #e8ff4712;
+}
+.intensity-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+.int-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 0.4rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+}
+.int-btn.active {
+  border-color: var(--accent);
+  background: #e8ff4712;
+}
+.int-icon { font-size: 1.3rem; }
+.int-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+}
+.int-btn.active .int-label { color: var(--accent); }
+.muscle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+.muscle-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+.muscle-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #e8ff4712;
+}
+.weight-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.weight-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.9rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.weight-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #e8ff4712;
+}
+.note-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  resize: none;
+  height: 100px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.note-input:focus { border-color: var(--accent); }
+.btn-save { max-width: 100%; }
 
-  const weekDates = getWeekDates(state.weekOffset);
-  const date = weekDates[state.selectedDayIndex];
-  const key = dateKey(date);
-  const workout = state.workouts[key];
+/* ===========================
+   ANALYSIS SCREEN
+   =========================== */
+.analysis-body {
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.analysis-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.3rem;
+}
+.analysis-card.highlight {
+  border-color: var(--accent);
+  background: #e8ff4708;
+}
+.ac-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.7rem;
+}
+.ac-status {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.8rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius-sm);
+}
+.ac-status.red { color: var(--red); background: #ff5c3a14; }
+.ac-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+.body-map-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+.body-region {
+  text-align: center;
+  padding: 0.8rem 0.3rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.body-region span { font-size: 1.2rem; display: block; margin-bottom: 0.25rem; }
+.body-region small { color: var(--text-dim); font-size: 0.6rem; }
+.body-region.red { background: #ff5c3a18; border: 1px solid #ff5c3a40; color: var(--red); }
+.body-region.yellow { background: #ffd16618; border: 1px solid #ffd16640; color: var(--yellow); }
+.body-region.green { background: #3affb818; border: 1px solid #3affb840; color: var(--green); }
+.rec-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.rec-list li {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.rec-list li strong { color: var(--text); }
 
-  const label = date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+/* ===========================
+   BOTTOM NAV
+   =========================== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 0.7rem 0 0.8rem;
+  z-index: 20;
+}
+.nav-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition: color 0.2s;
+}
+.nav-btn.active { color: var(--accent); }
+.nav-icon { font-size: 1.25rem; }
 
-  if (!workout) {
-    el.innerHTML = `
-      <div class="day-detail-card empty">
-        <div class="dd-date">${label}</div>
-        <div class="dd-empty">Nenhum treino registrado neste dia.</div>
-        <button class="dd-add-btn" onclick="goTo('screen-checkin')">+ Registrar treino</button>
-      </div>
-    `;
-    return;
-  }
-
-  const mod = MODALITIES.find(m => m.id === workout.modal);
-  const intensityLabel = { light:'Leve', normal:'Normal', heavy:'Pesado', pr:'PR 🏆' };
-  const muscleLabel    = { lower:'Membros Inferiores', upper:'Membros Superiores', full:'Full Body', core:'Core' };
-
-  el.innerHTML = `
-    <div class="day-detail-card" style="--dd-color:${mod ? mod.color : 'var(--accent)'}">
-      <div class="dd-date">${label}</div>
-      <div class="dd-mod-row">
-        <span class="dd-emoji">${mod ? mod.emoji : '❓'}</span>
-        <div>
-          <div class="dd-mod-name">${mod ? mod.name : workout.modal}</div>
-          <div class="dd-meta">${workout.duration} min · ${intensityLabel[workout.intensity] || workout.intensity}${workout.muscle ? ' · ' + (muscleLabel[workout.muscle] || workout.muscle) : ''}</div>
-        </div>
-      </div>
-      ${workout.note ? `<div class="dd-note">${workout.note}</div>` : ''}
-    </div>
-  `;
+/* ===========================
+   TOAST
+   =========================== */
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--accent);
+  color: var(--bg);
+  padding: 0.7rem 1.4rem;
+  border-radius: 30px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 100;
+  white-space: nowrap;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
-function renderMyMods() {
-  const el = document.getElementById('myModBlocks');
-  if (!el) return;
-
-  if (state.myModalityIds.length === 0) {
-    el.innerHTML = `
-      <div class="empty-mods-hint" onclick="goTo('screen-modalities')">
-        <span class="empty-mods-icon">＋</span>
-        <span>Adicione suas modalidades</span>
-      </div>
-    `;
-    return;
-  }
-
-  el.innerHTML = state.myModalityIds.map(id => {
-    const mod = MODALITIES.find(m => m.id === id);
-    if (!mod) return '';
-    return `
-      <div class="mod-block selected" style="--mod-color:${mod.color}" onclick="goTo('screen-analysis')">
-        <span class="mod-emoji">${mod.emoji}</span>
-        <div class="mod-name">${mod.name}</div>
-        <div class="mod-load-bar">
-          <div class="mod-load-fill" style="width:0%;background:${mod.color}"></div>
-        </div>
-      </div>
-    `;
-  }).join('');
+/* ===========================
+   PERSONAL RECORDS SCREEN
+   =========================== */
+.pr-hero {
+  padding: 1.2rem 1.4rem 0.8rem;
+}
+.pr-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.pr-trophy {
+  font-size: 2.2rem;
+  filter: drop-shadow(0 0 12px #ffd16680);
+  animation: trophyGlow 3s ease-in-out infinite;
+}
+@keyframes trophyGlow {
+  0%, 100% { filter: drop-shadow(0 0 8px #ffd16640); }
+  50%       { filter: drop-shadow(0 0 20px #ffd166aa); }
+}
+.pr-heading {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  line-height: 1;
+}
+.pr-sub {
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
 }
 
-// ===========================
-// RENDER — MODALITIES SCREEN
-// ===========================
-
-function renderAllModalities() {
-  const el = document.getElementById('allModCategories');
-  if (!el) return;
-
-  el.innerHTML = CATEGORIES.map(cat => {
-    const mods = MODALITIES.filter(m => m.cat === cat.id);
-    return `
-      <div class="cat-section">
-        <div class="cat-title">${cat.emoji} ${cat.label}</div>
-        <div class="cat-grid">
-          ${mods.map(mod => `
-            <div class="cat-mod-block ${state.myModalityIds.includes(mod.id) ? 'selected' : ''}"
-                 style="--mod-color:${mod.color}"
-                 data-id="${mod.id}"
-                 onclick="toggleModality('${mod.id}', this)">
-              <div class="mod-emoji">${mod.emoji}</div>
-              <div class="mod-name">${mod.name}</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }).join('');
+/* Tabs */
+.pr-tab-wrap {
+  overflow-x: auto;
+  padding: 0 1.4rem 0.8rem;
+  scrollbar-width: none;
+}
+.pr-tab-wrap::-webkit-scrollbar { display: none; }
+.pr-tabs {
+  display: flex;
+  gap: 0.5rem;
+  width: max-content;
+}
+.pr-tab {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.45rem 1rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.pr-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
 }
 
-function toggleModality(id, el) {
-  const idx = state.myModalityIds.indexOf(id);
-  if (idx === -1) {
-    state.myModalityIds.push(id);
-    el.classList.add('selected');
-  } else {
-    state.myModalityIds.splice(idx, 1);
-    el.classList.remove('selected');
-  }
+/* PR List */
+.pr-list-wrap {
+  padding: 0 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.pr-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+.pr-empty-icon { font-size: 2.5rem; display: block; margin-bottom: 0.8rem; opacity: 0.4; }
+
+.pr-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.pr-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--pr-color, var(--accent));
+  border-radius: 2px 0 0 2px;
+}
+.pr-item:hover { transform: translateX(3px); border-color: var(--pr-color, var(--accent)); }
+.pr-item-icon { font-size: 1.3rem; flex-shrink: 0; }
+.pr-item-body { flex: 1; }
+.pr-item-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+.pr-item-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.pr-item-value {
+  text-align: right;
+  flex-shrink: 0;
+}
+.pr-item-number {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pr-color, var(--accent));
+}
+.pr-item-unit {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  display: block;
+  text-align: right;
+}
+.pr-new-badge {
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  vertical-align: middle;
+  margin-left: 0.4rem;
 }
 
-function saveModalities() {
-  renderMyMods();
-  showToast('Modalidades salvas ✓');
-  setTimeout(() => goTo('screen-home'), 600);
+/* Move sub-groups */
+.pr-subgroup-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.8rem 0 0.4rem;
 }
 
-// ===========================
-// RENDER — CHECK-IN
-// ===========================
-
-function resetCheckin() {
-  state.selectedModalityId = null;
-  state.selectedDuration = 60;
-  state.selectedIntensity = 'normal';
-  state.selectedMuscle = 'full';
-  state.selectedWeight = 'usual';
-
-  document.getElementById('step1').classList.remove('hidden');
-  document.getElementById('step2').classList.add('hidden');
-  document.getElementById('step3').classList.add('hidden');
-  document.getElementById('stepForce').classList.add('hidden');
-  document.getElementById('step4').classList.add('hidden');
-  document.getElementById('saveBar').classList.add('hidden');
-
-  renderCheckinMods();
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000000cc;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  transition: opacity 0.3s;
+}
+.modal-overlay.hidden { display: none; }
+.modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 1.5rem 1.4rem 2rem;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  animation: slideUp 0.3s cubic-bezier(.16,1,.3,1);
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.modal-close {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.modal-field { display: flex; flex-direction: column; gap: 0.5rem; }
+.field-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.modal-select-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.modal-cat-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.8rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.modal-cat-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #e8ff4712;
+}
+.modal-move-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.modal-move-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.modal-move-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #e8ff4712;
+}
+.modal-value-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.value-input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  outline: none;
+  flex: 1;
+  transition: border-color 0.2s;
+}
+.value-input:focus { border-color: var(--accent); }
+.date-input { width: 100%; font-size: 0.88rem; font-family: var(--font-body); }
+.unit-toggle {
+  display: flex;
+  gap: 0.3rem;
+}
+.unit-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.8rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all 0.18s;
+}
+.unit-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #e8ff4712;
 }
 
-function renderCheckinMods() {
-  const el = document.getElementById('checkinModGrid');
-  if (!el) return;
+/* scrollbar for modal */
+.modal-move-list::-webkit-scrollbar { width: 3px; }
+.modal-move-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  const mods = state.myModalityIds.map(id => MODALITIES.find(m => m.id === id)).filter(Boolean);
-  // Also show all if only a few selected
-  const allMods = MODALITIES;
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  el.innerHTML = allMods.map(mod => `
-    <div class="mod-block" style="--mod-color:${mod.color}" data-id="${mod.id}" onclick="selectMod('${mod.id}', this)">
-      <span class="mod-emoji">${mod.emoji}</span>
-      <div class="mod-name">${mod.name}</div>
-    </div>
-  `).join('');
+/* Empty modalities state */
+.empty-mods-hint {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1.4rem;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+.empty-mods-hint:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.empty-mods-icon {
+  font-size: 1.2rem;
+  font-weight: 300;
 }
 
-function selectMod(id, el) {
-  document.querySelectorAll('#checkinModGrid .mod-block').forEach(b => b.classList.remove('selected'));
-  el.classList.add('selected');
-  state.selectedModalityId = id;
-
-  // Show next steps with stagger
-  setTimeout(() => {
-    document.getElementById('step2').classList.remove('hidden');
-    document.getElementById('step3').classList.remove('hidden');
-
-    const mod = MODALITIES.find(m => m.id === id);
-    if (mod && mod.hasWeight) {
-      document.getElementById('stepForce').classList.remove('hidden');
-    } else {
-      document.getElementById('stepForce').classList.add('hidden');
-    }
-
-    document.getElementById('step4').classList.remove('hidden');
-    document.getElementById('saveBar').classList.remove('hidden');
-  }, 150);
+/* ===========================
+   WEEK NAVIGATION
+   =========================== */
+.week-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+.week-range-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.week-nav-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.week-nav-btn:hover:not(.disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.week-nav-btn.disabled {
+  opacity: 0.25;
+  cursor: default;
 }
 
-function selectDur(el) {
-  document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  state.selectedDuration = parseInt(el.dataset.val);
+/* Day number below day name */
+.day-num {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+  line-height: 1;
+}
+.day-block.today .day-num {
+  color: var(--accent);
+}
+.day-block.selected-day {
+  border-color: var(--accent) !important;
+  background: #e8ff4714 !important;
+}
+.day-block.selected-day .day-name {
+  color: var(--accent);
 }
 
-function selectInt(el) {
-  document.querySelectorAll('.int-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  state.selectedIntensity = el.dataset.val;
+/* Day detail card */
+#dayDetail {
+  margin-top: 0.8rem;
+}
+.day-detail-card {
+  background: var(--surface);
+  border: 1px solid var(--dd-color, var(--border));
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.1rem;
+  position: relative;
+  overflow: hidden;
+  animation: fadeSlideIn 0.25s ease;
+}
+.day-detail-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--dd-color, var(--accent));
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dd-date {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 0.7rem;
+}
+.dd-mod-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.dd-emoji { font-size: 1.6rem; }
+.dd-mod-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+.dd-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.dd-note {
+  margin-top: 0.7rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+}
+.day-detail-card.empty {
+  border-color: var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.day-detail-card.empty::before { display: none; }
+.dd-empty {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+.dd-add-btn {
+  background: none;
+  border: 1px dashed var(--border);
+  color: var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.9rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  width: fit-content;
+  transition: border-color 0.2s;
+}
+.dd-add-btn:hover { border-color: var(--accent); }
+
+/* ===========================
+   CHECKIN STICKY SAVE BAR
+   =========================== */
+.checkin-save-bar {
+  position: sticky;
+  bottom: 80px;                   /* sit right above bottom nav */
+  left: 0; right: 0;
+  padding: 0.8rem 1.4rem;
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  z-index: 15;
+}
+.checkin-save-bar.hidden { display: none; }
+.checkin-save-bar .btn-primary {
+  max-width: 100%;
+  box-shadow: 0 0 32px #e8ff4740;
 }
 
-function selectMuscle(el) {
-  document.querySelectorAll('.muscle-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  state.selectedMuscle = el.dataset.val;
+/* ===========================
+   DYNAMIC STATUS CARD
+   =========================== */
+
+/* Header date */
+.top-date {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
 }
 
-function selectWeight(el) {
-  document.querySelectorAll('.weight-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  state.selectedWeight = el.dataset.val;
+/* Context message */
+.status-context {
+  margin-bottom: 1rem;
+}
+.sc-label {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+.sc-msg {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.55;
 }
 
-function saveCheckin() {
-  if (!state.selectedModalityId) {
-    showToast('Selecione uma modalidade');
-    return;
-  }
-  const key = todayKey();
-  const note = document.querySelector('.note-input') ? document.querySelector('.note-input').value : '';
-  state.workouts[key] = {
-    modal:     state.selectedModalityId,
-    duration:  state.selectedDuration,
-    intensity: state.selectedIntensity,
-    muscle:    state.selectedMuscle,
-    weight:    state.selectedWeight,
-    note:      note,
-  };
-  showToast('Treino registrado ✓');
-  setTimeout(() => { goTo('screen-home'); }, 700);
+/* Load bar — no pct text inside */
+.load-bar-fill::after { display: none; }
+
+/* Zone labels row */
+.load-zone-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+.lz {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  transition: color 0.3s;
+}
+.lz.active-lz {
+  color: var(--text);
 }
 
-// ===========================
-// FEELING + HOME DYNAMIC RENDER
-// ===========================
-
-function setFeeling(btn, feel) {
-  document.querySelectorAll('.feeling-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  state.todayFeeling = feel;
-  // update context message based on feeling + load
-  renderStatusContext();
+/* State pill */
+.load-state-pill {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  border: 1px solid;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  transition: all 0.4s;
 }
 
-// ===========================
-// LOAD CALCULATION
-// ===========================
-
-// Intensity weights
-const INTENSITY_SCORE = { light: 1, normal: 2, heavy: 3, pr: 3.5 };
-// Duration brackets
-function durationScore(min) {
-  if (min <= 30) return 0.6;
-  if (min <= 45) return 0.8;
-  if (min <= 60) return 1.0;
-  if (min <= 90) return 1.3;
-  return 1.6;
-}
-// Impact multiplier
-const IMPACT_SCORE = { lower: 1.2, upper: 0.9, full: 1.1, core: 0.8 };
-
-function calcWeekLoad() {
-  // Look at last 7 days
-  const scores = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = dateKey(d);
-    const w = state.workouts[key];
-    if (!w) { scores.push(0); continue; }
-    const intScore  = INTENSITY_SCORE[w.intensity] || 2;
-    const durScore  = durationScore(w.duration || 60);
-    const impScore  = IMPACT_SCORE[w.muscle] || 1.0;
-    scores.push(intScore * durScore * impScore);
-  }
-  // Max possible per day ~= 3.5 * 1.6 * 1.2 = 6.72; week max ~= 47
-  const total = scores.reduce((a, b) => a + b, 0);
-  const pct   = Math.min(100, Math.round((total / 28) * 100)); // 28 = moderate full week
-  return { pct, scores, total };
-}
-
-function loadZone(pct) {
-  if (pct < 35) return 'rest';
-  if (pct < 65) return 'ok';
-  if (pct < 85) return 'attention';
-  return 'risk';
-}
-
-function zoneLabel(zone) {
-  return { rest: 'Descansada', ok: 'OK', attention: 'Atenção', risk: 'Risco' }[zone];
-}
-function zoneColor(zone) {
-  return { rest: 'var(--accent3)', ok: 'var(--accent3)', attention: 'var(--yellow)', risk: 'var(--red)' }[zone];
-}
-
-// ===========================
-// OVERLOAD PATTERN DETECTION
-// ===========================
-
-function detectAlert(scores) {
-  // Count consecutive heavy days
-  const recentDays = [];
-  for (let i = 3; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    recentDays.push(state.workouts[dateKey(d)]);
-  }
-
-  const heavyConsec = recentDays.filter(w => w && (w.intensity === 'heavy' || w.intensity === 'pr')).length;
-  const lowerDays   = recentDays.filter(w => w && (w.muscle === 'lower' || w.muscle === 'full' ||
-                        (w.modal && ['corrida','bike','futebol','basquete','capoeira','jiujitsu','muaythai','volei','handebol','beachtennis','tenis','padel'].includes(w.modal)))).length;
-
-  if (heavyConsec >= 3) {
-    return {
-      title: `${heavyConsec} treinos pesados consecutivos`,
-      text: `Você acumulou treinos de alta intensidade nos últimos ${heavyConsec} dias sem descanso suficiente. Isso aumenta o risco de fadiga e lesão.`
-    };
-  }
-  if (lowerDays >= 3) {
-    return {
-      title: 'Membros inferiores sobrecarregados',
-      text: `Pernas e glúteos foram exigidos em ${lowerDays} dos últimos 4 dias. Considere um treino de membros superiores ou descanso ativo.`
-    };
-  }
-  return null;
-}
-
-// ===========================
-// CONTEXT MESSAGE
-// ===========================
-
-function todayContext() {
-  const todayW   = state.workouts[todayKey()];
-  const { pct }  = calcWeekLoad();
-  const zone     = loadZone(pct);
-  const feel     = state.todayFeeling;
-
-  // No workouts at all this week
-  const hasAny = Object.keys(state.workouts).length > 0;
-  if (!hasAny) {
-    return { label: 'Bem-vinda de volta', msg: 'Registre seu primeiro treino para começar a acompanhar sua performance.' };
-  }
-
-  // Today already has a workout
-  if (todayW) {
-    const mod = MODALITIES.find(m => m.id === todayW.modal);
-    return {
-      label: 'Treino registrado hoje',
-      msg: `${mod ? mod.emoji + ' ' + mod.name : 'Treino'} — ${todayW.duration} min. ${zone === 'risk' ? 'Sua carga está alta, priorize a recuperação.' : 'Boa sessão!'}`
-    };
-  }
-
-  // Has feeling input
-  if (feel === 'tired' && zone === 'risk') {
-    return { label: 'Sinal de alerta', msg: 'Você está cansada e a carga da semana está alta. Hoje pode ser um bom dia de descanso ativo.' };
-  }
-  if (feel === 'tired') {
-    return { label: 'Como você está hoje', msg: 'Cansaço pode ser sinal que o corpo pede recuperação. Avalie a intensidade antes de treinar.' };
-  }
-  if (feel === 'great' && zone === 'rest') {
-    return { label: 'Pronta para treinar', msg: 'Sua carga está baixa e você está disposta — bom momento para um treino mais intenso.' };
-  }
-
-  // Zone-based default
-  const zoneMsg = {
-    rest:      'Sua semana está tranquila. Como pretende treinar hoje?',
-    ok:        'Carga equilibrada. Boa semana até agora.',
-    attention: 'Carga acumulando. Avalie a intensidade do treino de hoje.',
-    risk:      'Carga elevada esta semana. Considere descanso ou treino leve hoje.',
-  };
-  return { label: 'Como você está hoje', msg: zoneMsg[zone] };
-}
-
-// ===========================
-// RENDER HOME STATUS
-// ===========================
-
-function renderStatusContext() {
-  const ctx = todayContext();
-  const el  = document.getElementById('statusContext');
-  if (el) {
-    el.innerHTML = `<div class="sc-label">${ctx.label}</div><p class="sc-msg">${ctx.msg}</p>`;
-  }
-}
-
-function renderLoadBar() {
-  const { pct } = calcWeekLoad();
-  const zone    = loadZone(pct);
-  const bar     = document.getElementById('loadBar');
-  const pill    = document.getElementById('loadStatePill');
-
-  // Animate bar
-  if (bar) {
-    bar.style.width = '0%';
-    setTimeout(() => {
-      bar.style.width = pct + '%';
-      bar.style.background = pct < 35
-        ? 'linear-gradient(90deg, var(--accent3), var(--accent3))'
-        : pct < 65
-          ? 'linear-gradient(90deg, var(--accent3), var(--yellow))'
-          : pct < 85
-            ? 'linear-gradient(90deg, var(--accent3), var(--yellow) 60%, var(--red))'
-            : 'linear-gradient(90deg, var(--accent3), var(--yellow) 40%, var(--red) 75%)';
-    }, 300);
-  }
-
-  // Zone labels — highlight active
-  ['rest','attention','risk'].forEach(z => {
-    const el = document.getElementById('lz-' + z);
-    if (el) el.classList.remove('active-lz');
-  });
-  const activeId = zone === 'ok' ? 'lz-rest' : 'lz-' + zone;
-  const activeEl = document.getElementById(activeId);
-  if (activeEl) activeEl.classList.add('active-lz');
-
-  // Pill showing state + pct
-  if (pill) {
-    pill.textContent = zoneLabel(zone) + (pct > 0 ? ' · ' + pct + '%' : '');
-    pill.style.background = zoneColor(zone) + '22';
-    pill.style.color       = zoneColor(zone);
-    pill.style.borderColor = zoneColor(zone) + '55';
-  }
-}
-
-function renderAlertCard() {
-  const { scores } = calcWeekLoad();
-  const alert = detectAlert(scores);
-  const card  = document.getElementById('alertCard');
-  if (!card) return;
-
-  if (alert) {
-    card.classList.remove('hidden');
-    document.getElementById('alertTitle').textContent = alert.title;
-    document.getElementById('alertText').textContent  = alert.text;
-  } else {
-    card.classList.add('hidden');
-  }
-}
-
-function renderHome() {
-  // top date
-  const dateEl = document.getElementById('topDate');
-  if (dateEl) {
-    dateEl.textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
-  }
-  // restore today's feeling if saved
-  if (state.todayFeeling) {
-    document.querySelectorAll('.feeling-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.feel === state.todayFeeling);
-    });
-  }
-  renderStatusContext();
-  renderLoadBar();
-  renderAlertCard();
-  renderWeekStrip();
-  renderMyMods();
-}
-
-// ===========================
-// TOAST
-// ===========================
-
-function showToast(msg) {
-  let toast = document.querySelector('.toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.className = 'toast';
-    document.body.appendChild(toast);
-  }
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2200);
-}
-
-// ===========================
-// PR DATA — MOVEMENTS BY CATEGORY
-// ===========================
-
-const PR_CATEGORIES = [
-  {
-    id: 'levantamento',
-    label: 'Levantamento de Peso',
-    emoji: '🏋️',
-    color: '#e8ff47',
-    unit: 'kg',
-    subgroups: [
-      {
-        label: 'Olímpicos',
-        moves: [
-          { id: 'snatch',          name: 'Snatch',           emoji: '🔼' },
-          { id: 'clean_jerk',      name: 'Clean & Jerk',     emoji: '🔼' },
-          { id: 'clean',           name: 'Clean',            emoji: '⬆️' },
-          { id: 'hang_clean',      name: 'Hang Clean',       emoji: '⬆️' },
-          { id: 'power_clean',     name: 'Power Clean',      emoji: '⬆️' },
-          { id: 'hang_power_clean',name: 'Hang Power Clean', emoji: '⬆️' },
-          { id: 'hang_power_snatch',name:'Hang Power Snatch',emoji: '🔼' },
-          { id: 'squat_clean',     name: 'Squat Clean',      emoji: '⬆️' },
-          { id: 'push_jerk',       name: 'Push Jerk',        emoji: '🔼' },
-        ]
-      },
-      {
-        label: 'Força',
-        moves: [
-          { id: 'back_squat',    name: 'Back Squat',      emoji: '🦵' },
-          { id: 'front_squat',   name: 'Front Squat',     emoji: '🦵' },
-          { id: 'overhead_squat',name: 'Overhead Squat',  emoji: '🦵' },
-          { id: 'deadlift',      name: 'Deadlift',        emoji: '💪' },
-          { id: 'bench_press',   name: 'Bench Press',     emoji: '💪' },
-          { id: 'shoulder_press',name: 'Shoulder Press',  emoji: '💪' },
-          { id: 'push_press',    name: 'Push Press',      emoji: '💪' },
-          { id: 'strict_press',  name: 'Strict Press',    emoji: '💪' },
-          { id: 'barbell_row',   name: 'Barbell Row',     emoji: '🔄' },
-        ]
-      }
-    ]
-  },
-  {
-    id: 'ginastica',
-    label: 'Ginástica',
-    emoji: '🤸',
-    color: '#c47aff',
-    unit: 'reps',
-    subgroups: [
-      {
-        label: 'Estático / Isométrico',
-        moves: [
-          { id: 'planche',       name: 'Planche',          emoji: '🧍' },
-          { id: 'front_lever',   name: 'Front Lever',      emoji: '🧍' },
-          { id: 'back_lever',    name: 'Back Lever',       emoji: '🧍' },
-          { id: 'l_sit',         name: 'L-Sit',            emoji: '🧍' },
-          { id: 'human_flag',    name: 'Human Flag',       emoji: '🚩' },
-          { id: 'handstand',     name: 'Handstand (tempo)',emoji: '🙃' },
-        ]
-      },
-      {
-        label: 'Dinâmico',
-        moves: [
-          { id: 'muscle_up',    name: 'Muscle Up',         emoji: '🔁' },
-          { id: 'pull_up',      name: 'Pull Up',           emoji: '🆙' },
-          { id: 'chest_to_bar', name: 'Chest-to-Bar',      emoji: '🆙' },
-          { id: 'bar_mu',       name: 'Bar Muscle Up',     emoji: '🔁' },
-          { id: 'toes_to_bar',  name: 'Toes to Bar',       emoji: '🦶' },
-          { id: 'hspu',         name: 'HSPU',              emoji: '🙃' },
-          { id: 'pistol',       name: 'Pistol Squat',      emoji: '🦵' },
-          { id: 'ring_dip',     name: 'Ring Dip',          emoji: '💍' },
-        ]
-      }
-    ]
-  },
-  {
-    id: 'endurance',
-    label: 'Endurance',
-    emoji: '🏃',
-    color: '#3affb8',
-    unit: 'min',
-    subgroups: [
-      {
-        label: 'Corrida',
-        moves: [
-          { id: 'run_1k',   name: '1 km',      emoji: '🏃' },
-          { id: 'run_5k',   name: '5 km',      emoji: '🏃' },
-          { id: 'run_10k',  name: '10 km',     emoji: '🏃' },
-          { id: 'run_21k',  name: 'Meia Maratona', emoji: '🏃' },
-          { id: 'run_42k',  name: 'Maratona',  emoji: '🏃' },
-        ]
-      },
-      {
-        label: 'Outros',
-        moves: [
-          { id: 'row_500m',  name: 'Remo 500m',   emoji: '🚣' },
-          { id: 'row_2k',    name: 'Remo 2 km',   emoji: '🚣' },
-          { id: 'bike_1k',   name: 'Bike 1 km',   emoji: '🚴' },
-          { id: 'swim_100m', name: 'Nado 100m',   emoji: '🏊' },
-          { id: 'swim_1k',   name: 'Nado 1 km',   emoji: '🏊' },
-          { id: 'jump_rope', name: 'Corda (duplo)', emoji: '🪢' },
-        ]
-      }
-    ]
-  },
-  {
-    id: 'capoeira',
-    label: 'Capoeira',
-    emoji: '🥋',
-    color: '#ff9f47',
-    unit: 'nível',
-    subgroups: [
-      {
-        label: 'Acrobacias',
-        moves: [
-          { id: 'au',          name: 'Aú',              emoji: '🌀' },
-          { id: 'macaco',      name: 'Macaco',          emoji: '🌀' },
-          { id: 'mortal',      name: 'Mortal',          emoji: '🌀' },
-          { id: 'parafuso',    name: 'Parafuso',        emoji: '🌀' },
-          { id: 'paralelo',    name: 'Aú Paralelo',     emoji: '🌀' },
-          { id: 'volta_mundo', name: 'Volta ao Mundo',  emoji: '🌀' },
-        ]
-      },
-      {
-        label: 'Golpes',
-        moves: [
-          { id: 'ginga_tempo',    name: 'Ginga (tempo contínuo)', emoji: '⏱️' },
-          { id: 'bencao',         name: 'Bênção',                 emoji: '🦶' },
-          { id: 'armada',         name: 'Armada',                 emoji: '🦵' },
-          { id: 'meia_lua',       name: 'Meia-lua de frente',     emoji: '🦵' },
-          { id: 'meia_lua_compasso', name: 'Meia-lua de compasso',emoji: '🦵' },
-          { id: 'queixada',       name: 'Queixada',               emoji: '🦵' },
-        ]
-      }
-    ]
-  },
-  {
-    id: 'esportes',
-    label: 'Esportes',
-    emoji: '⚽',
-    color: '#ff5c3a',
-    unit: 'marca',
-    subgroups: [
-      {
-        label: 'Tênis & Raquete',
-        moves: [
-          { id: 'saque_kmh',   name: 'Velocidade de Saque (km/h)', emoji: '🎾' },
-          { id: 'rally_bolas', name: 'Rally mais longo (bolas)',    emoji: '🎾' },
-        ]
-      },
-      {
-        label: 'Outros',
-        moves: [
-          { id: 'natacao_pace',  name: 'Melhor pace nado (min/100m)', emoji: '🏊' },
-          { id: 'ciclismo_kmh',  name: 'Velocidade max bike (km/h)',   emoji: '🚴' },
-          { id: 'salto_altura',  name: 'Salto em altura (cm)',         emoji: '🏀' },
-          { id: 'sprint_100m',   name: 'Sprint 100m',                  emoji: '⚡' },
-        ]
-      }
-    ]
-  }
-];
-
-// PR State
-let prState = {
-  activeCat: 'levantamento',
-  records: {},
-  modalCat: 'levantamento',
-  modalMove: null,
-  modalUnit: 'kg',
-};
-
-// ===========================
-// PR RENDER
-// ===========================
-
-function renderPRTabs() {
-  const el = document.getElementById('prTabs');
-  if (!el) return;
-  el.innerHTML = PR_CATEGORIES.map(cat => `
-    <button class="pr-tab ${prState.activeCat === cat.id ? 'active' : ''}"
-            onclick="setPRCat('${cat.id}')">
-      ${cat.emoji} ${cat.label}
-    </button>
-  `).join('');
-}
-
-function setPRCat(catId) {
-  prState.activeCat = catId;
-  renderPRTabs();
-  renderPRList();
-}
-
-function renderPRList() {
-  const el = document.getElementById('prListWrap');
-  if (!el) return;
-
-  const cat = PR_CATEGORIES.find(c => c.id === prState.activeCat);
-  if (!cat) return;
-
-  // Collect all move IDs that have a record
-  const allMoveIds = cat.subgroups.flatMap(sg => sg.moves.map(m => m.id));
-  const hasAnyRecord = allMoveIds.some(id => prState.records[id]);
-
-  if (!hasAnyRecord) {
-    el.innerHTML = `
-      <div class="pr-empty">
-        <span class="pr-empty-icon">🏆</span>
-        Nenhum recorde registrado ainda.<br>
-        Toque em <strong>+ Novo PR</strong> para começar.
-      </div>
-    `;
-    return;
-  }
-
-  let html = '';
-  cat.subgroups.forEach(sg => {
-    const movesWithRecords = sg.moves.filter(m => prState.records[m.id]);
-    if (movesWithRecords.length === 0) return;
-
-    html += `<div class="pr-subgroup-title">${sg.label}</div>`;
-    movesWithRecords.forEach(move => {
-      const rec = prState.records[move.id];
-      const dateStr = rec.date ? new Date(rec.date + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'2-digit' }) : '';
-      html += `
-        <div class="pr-item" style="--pr-color:${cat.color}">
-          <div class="pr-item-icon">${move.emoji}</div>
-          <div class="pr-item-body">
-            <div class="pr-item-name">
-              ${move.name}
-              ${rec.isNew ? '<span class="pr-new-badge">NOVO</span>' : ''}
-            </div>
-            <div class="pr-item-meta">${dateStr}</div>
-          </div>
-          <div class="pr-item-value">
-            <div class="pr-item-number">${rec.value}</div>
-            <span class="pr-item-unit">${rec.unit}</span>
-          </div>
-        </div>
-      `;
-    });
-  });
-
-  el.innerHTML = html;
-}
-
-// ===========================
-// ADD PR MODAL
-// ===========================
-
-function openAddPR() {
-  document.getElementById('addPRModal').classList.remove('hidden');
-  prState.modalCat = prState.activeCat;
-  prState.modalMove = null;
-  renderModalCats();
-  renderModalMoves();
-  updateModalUnit();
-  // set today as default date
-  document.getElementById('prDateInput').value = new Date().toISOString().split('T')[0];
-}
-
-function closeAddPR() {
-  document.getElementById('addPRModal').classList.add('hidden');
-}
-
-function renderModalCats() {
-  const el = document.getElementById('modalCatRow');
-  if (!el) return;
-  el.innerHTML = PR_CATEGORIES.map(cat => `
-    <button class="modal-cat-btn ${prState.modalCat === cat.id ? 'active' : ''}"
-            onclick="setModalCat('${cat.id}')">
-      ${cat.emoji} ${cat.label}
-    </button>
-  `).join('');
-}
-
-function setModalCat(catId) {
-  prState.modalCat = catId;
-  prState.modalMove = null;
-  renderModalCats();
-  renderModalMoves();
-  updateModalUnit();
-}
-
-function renderModalMoves() {
-  const el = document.getElementById('modalMoveList');
-  if (!el) return;
-  const cat = PR_CATEGORIES.find(c => c.id === prState.modalCat);
-  if (!cat) return;
-
-  let html = '';
-  cat.subgroups.forEach(sg => {
-    html += `<div style="font-size:0.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;padding:0.5rem 0 0.3rem">${sg.label}</div>`;
-    sg.moves.forEach(m => {
-      html += `
-        <button class="modal-move-btn ${prState.modalMove === m.id ? 'active' : ''}"
-                onclick="setModalMove('${m.id}')">
-          ${m.emoji} ${m.name}
-        </button>
-      `;
-    });
-  });
-  el.innerHTML = html;
-}
-
-function setModalMove(moveId) {
-  prState.modalMove = moveId;
-  renderModalMoves();
-}
-
-function updateModalUnit() {
-  const cat = PR_CATEGORIES.find(c => c.id === prState.modalCat);
-  const defaultUnit = cat ? cat.unit : 'kg';
-  prState.modalUnit = defaultUnit;
-
-  const el = document.getElementById('unitToggle');
-  const label = document.getElementById('modalValueLabel');
-
-  // Offer unit choices based on category
-  let units = [];
-  if (prState.modalCat === 'levantamento') units = ['kg', 'lb'];
-  else if (prState.modalCat === 'ginastica') units = ['reps', 'seg'];
-  else if (prState.modalCat === 'endurance') units = ['min', 'seg'];
-  else if (prState.modalCat === 'capoeira') units = ['seg', 'nível', 'reps'];
-  else units = ['marca', 'km/h', 'cm', 'min'];
-
-  prState.modalUnit = units[0];
-  label.textContent = `Valor (${prState.modalUnit})`;
-
-  el.innerHTML = units.map(u => `
-    <button class="unit-btn ${u === prState.modalUnit ? 'active' : ''}"
-            onclick="setUnit('${u}', this)">${u}</button>
-  `).join('');
-}
-
-function setUnit(unit, el) {
-  prState.modalUnit = unit;
-  document.querySelectorAll('.unit-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('modalValueLabel').textContent = `Valor (${unit})`;
-}
-
-function savePR() {
-  const moveId = prState.modalMove;
-  const value = parseFloat(document.getElementById('prValueInput').value);
-  const date = document.getElementById('prDateInput').value;
-
-  if (!moveId) { showToast('Selecione um movimento'); return; }
-  if (isNaN(value) || value <= 0) { showToast('Informe um valor válido'); return; }
-
-  const existing = prState.records[moveId];
-  const isNew = !existing || value > existing.value;
-
-  prState.records[moveId] = {
-    value,
-    unit: prState.modalUnit,
-    date,
-    isNew,
-  };
-
-  closeAddPR();
-  document.getElementById('prValueInput').value = '';
-  document.getElementById('prNoteInput').value = '';
-
-  // Switch to the saved cat
-  prState.activeCat = prState.modalCat;
-  renderPRTabs();
-  renderPRList();
-
-  showToast(isNew ? '🏆 Novo PR registrado!' : 'Recorde atualizado ✓');
-}
-
-// ===========================
-// INIT — add PR renders
-// ===========================
-
-window.addEventListener('DOMContentLoaded', () => {
-  // Initialize today feeling state
-  state.todayFeeling = null;
-
-  renderHome();
-  renderAllModalities();
-  renderCheckinMods();
-  renderPRTabs();
-  renderPRList();
-
-  // Re-render home every time it becomes active (e.g. returning from checkin)
-  const homeObserver = new MutationObserver(() => {
-    if (document.getElementById('screen-home').classList.contains('active')) {
-      renderHome();
-    }
-  });
-  homeObserver.observe(document.getElementById('screen-home'), { attributes: true, attributeFilter: ['class'] });
-
-  const prObserver = new MutationObserver(() => {
-    if (document.getElementById('screen-pr').classList.contains('active')) {
-      renderPRTabs();
-      renderPRList();
-    }
-  });
-  prObserver.observe(document.getElementById('screen-pr'), { attributes: true, attributeFilter: ['class'] });
-});
+/* Hidden alert */
+.alert-card.hidden { display: none; }
