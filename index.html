@@ -225,39 +225,8 @@
       <span class="screen-title">Análise de Carga</span>
     </header>
 
-    <div class="analysis-body">
-
-      <div class="analysis-card">
-        <div class="ac-title">Estado atual</div>
-        <div class="ac-status red">⚠ Carga elevada — risco de fadiga</div>
-        <p class="ac-text">Seus membros inferiores foram exigidos em <strong>4 dos últimos 5 dias</strong>: crossfit full body → corrida → capoeira (impacto alto) → treino de perna.</p>
-      </div>
-
-      <div class="analysis-card">
-        <div class="ac-title">Mapa de estimulação</div>
-        <div class="body-map-row">
-          <div class="body-region red"><span>🦵</span> Inferiores<br><small>Alta carga</small></div>
-          <div class="body-region yellow"><span>🫀</span> Cardio<br><small>Moderado</small></div>
-          <div class="body-region green"><span>💪</span> Superiores<br><small>Descansado</small></div>
-          <div class="body-region green"><span>⚡</span> Core<br><small>Descansado</small></div>
-        </div>
-      </div>
-
-      <div class="analysis-card">
-        <div class="ac-title">O que isso significa</div>
-        <p class="ac-text">O intervalo entre a capoeira (quarta) e o treino de perna (quinta) foi menor que 24h — insuficiente para recuperação. Isso explica o cansaço reportado e aumenta o risco de lesão em joelho e tornozelo.</p>
-      </div>
-
-      <div class="analysis-card highlight">
-        <div class="ac-title">Recomendação para os próximos dias</div>
-        <ul class="rec-list">
-          <li>🛌 <strong>Hoje:</strong> descanso ativo ou treino de membros superiores apenas</li>
-          <li>🚫 <strong>48h:</strong> evite corrida e capoeira</li>
-          <li>🏋️ <strong>Academia:</strong> foque em costas e ombro se quiser treinar</li>
-          <li>💧 <strong>Hidratação:</strong> atenção redobrada hoje e amanhã</li>
-        </ul>
-      </div>
-
+    <div class="analysis-body" id="analysisBody">
+      <!-- rendered dynamically by renderAnalysis() -->
     </div>
 
     <nav class="bottom-nav">
