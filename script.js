@@ -1062,6 +1062,184 @@ function savePR() {
   showToast(isNew ? '🏆 Novo PR registrado!' : 'Recorde atualizado ✓');
 }
 
+
+// ===========================
+// RENDER — ANALYSIS SCREEN
+// ===========================
+
+function getRecentWorkouts(days) {
+  // Returns array of {date, workout, mod} for last N days, most recent first
+  const result = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = dateKey(d);
+    const w = state.workouts[key];
+    if (w) {
+      const mod = MODALITIES.find(m => m.id === w.modal);
+      result.push({ key, date: d, workout: w, mod });
+    }
+  }
+  return result;
+}
+
+function calcBodyRegions(recent) {
+  // Score each region based on recent workouts
+  const regions = { lower: 0, upper: 0, cardio: 0, core: 0 };
+
+  const lowerMods = ['corrida','bike','futebol','basquete','capoeira','jiujitsu','muaythai','volei','handebol','beachtennis','tenis','padel','squash','danca'];
+  const cardioMods = ['corrida','bike','natacao','remo','futebol','basquete','handebol','capoeira','jiujitsu','muaythai','beachtennis','tenis','padel','squash','danca','crossfit'];
+  const upperMods = ['calistenia','escalada','boxe','muaythai'];
+
+  recent.forEach(({ workout: w }) => {
+    const intMult = { light: 0.5, normal: 1, heavy: 1.5, pr: 1.8 }[w.intensity] || 1;
+
+    // Muscle group from force exercises
+    if (w.muscle === 'lower' || w.muscle === 'full') regions.lower += intMult;
+    if (w.muscle === 'upper' || w.muscle === 'full') regions.upper += intMult;
+    if (w.muscle === 'core')  regions.core  += intMult;
+
+    // Modal-based inference
+    if (lowerMods.includes(w.modal))  regions.lower  += intMult * 0.8;
+    if (cardioMods.includes(w.modal)) regions.cardio += intMult * 0.9;
+    if (upperMods.includes(w.modal))  regions.upper  += intMult * 0.6;
+  });
+
+  return regions;
+}
+
+function regionStatus(score, max) {
+  const pct = score / max;
+  if (pct < 0.3)  return { cls: 'green', label: 'Descansado' };
+  if (pct < 0.65) return { cls: 'yellow', label: 'Moderado' };
+  return { cls: 'red', label: 'Alta carga' };
+}
+
+function buildRecommendations(recent, regions) {
+  const recs = [];
+  const maxRegion = Math.max(...Object.values(regions));
+
+  if (regions.lower >= 2.5) {
+    recs.push('🦵 Evite corrida, agachamento e esportes de impacto nas próximas 24–48h');
+  }
+  if (regions.cardio >= 3) {
+    recs.push('🫀 Volume cardiovascular elevado — priorize intensidade leve se treinar hoje');
+  }
+  if (regions.upper >= 2.5) {
+    recs.push('💪 Membros superiores sobrecarregados — evite empurrar e puxar pesado');
+  }
+  if (maxRegion >= 3.5) {
+    recs.push('🛌 Considere descanso ativo hoje: caminhada leve ou alongamento');
+    recs.push('💧 Hidratação redobrada — fundamental para recuperação muscular');
+  } else if (maxRegion < 1 && recent.length === 0) {
+    recs.push('⚡ Semana tranquila — bom momento para um treino de maior intensidade');
+  } else {
+    recs.push('✅ Carga equilibrada — mantenha o ritmo e respeite o descanso');
+  }
+
+  return recs;
+}
+
+function renderAnalysis() {
+  const el = document.getElementById('analysisBody');
+  if (!el) return;
+
+  const hasAny = Object.keys(state.workouts).length > 0;
+
+  // ---- EMPTY STATE ----
+  if (!hasAny) {
+    el.innerHTML = `
+      <div class="analysis-card">
+        <div class="ac-title">Nenhum dado ainda</div>
+        <p class="ac-text" style="margin-top:0.4rem">
+          Registre seus treinos para começar a ver análise de carga,
+          mapa de estimulação por região e recomendações personalizadas.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  // ---- DATA ----
+  const recent3 = getRecentWorkouts(3);   // last 3 days with workouts
+  const recent7 = getRecentWorkouts(7);
+  const { pct }  = calcWeekLoad();
+  const zone     = loadZone(pct);
+  const regions  = calcBodyRegions(recent3.length ? recent3 : recent7);
+  const maxR     = Math.max(...Object.values(regions), 0.1);
+  const recs     = buildRecommendations(recent3, regions);
+
+  // ---- ESTADO ATUAL ----
+  const zoneMap = {
+    rest:      { cls: 'green',  icon: '✓',  msg: 'Carga baixa — corpo recuperado' },
+    ok:        { cls: 'green',  icon: '✓',  msg: 'Carga equilibrada — boa semana' },
+    attention: { cls: 'yellow', icon: '⚡', msg: 'Carga acumulando — atenção à intensidade' },
+    risk:      { cls: 'red',    icon: '⚠',  msg: 'Carga elevada — risco de fadiga' },
+  };
+  const zi = zoneMap[zone];
+
+  // Last 3 days summary text
+  const summaryParts = recent3.map(({ workout: w, mod }) =>
+    `${mod ? mod.emoji + ' ' + mod.name : w.modal} (${w.intensity === 'heavy' ? 'pesado' : w.intensity === 'light' ? 'leve' : w.intensity === 'pr' ? 'PR' : 'normal'})`
+  );
+  const summaryText = summaryParts.length
+    ? `Últimos ${summaryParts.length} dia${summaryParts.length > 1 ? 's' : ''} com treino: ${summaryParts.join(' → ')}.`
+    : 'Nenhum treino nos últimos 3 dias.';
+
+  // ---- BODY MAP ----
+  const lowerSt  = regionStatus(regions.lower,  maxR);
+  const upperSt  = regionStatus(regions.upper,  maxR);
+  const cardioSt = regionStatus(regions.cardio, maxR);
+  const coreSt   = regionStatus(regions.core,   maxR);
+
+  // ---- RENDER ----
+  el.innerHTML = `
+    <div class="analysis-card">
+      <div class="ac-title">Estado atual</div>
+      <div class="ac-status ${zi.cls}">${zi.icon} ${zi.msg}</div>
+      <p class="ac-text">${summaryText}</p>
+    </div>
+
+    <div class="analysis-card">
+      <div class="ac-title">Mapa de estimulação</div>
+      <div class="body-map-row">
+        <div class="body-region ${lowerSt.cls}">
+          <span>🦵</span> Inferiores<br><small>${lowerSt.label}</small>
+        </div>
+        <div class="body-region ${cardioSt.cls}">
+          <span>🫀</span> Cardio<br><small>${cardioSt.label}</small>
+        </div>
+        <div class="body-region ${upperSt.cls}">
+          <span>💪</span> Superiores<br><small>${upperSt.label}</small>
+        </div>
+        <div class="body-region ${coreSt.cls}">
+          <span>⚡</span> Core<br><small>${coreSt.label}</small>
+        </div>
+      </div>
+    </div>
+
+    ${recent3.length >= 2 ? `
+    <div class="analysis-card">
+      <div class="ac-title">O que isso significa</div>
+      <p class="ac-text">
+        ${regions.lower >= 2.5
+          ? `Seus membros inferiores receberam estímulo alto nos últimos dias. O intervalo de recuperação entre sessões de alto impacto deve ser de pelo menos 48h para evitar lesão.`
+          : regions.cardio >= 3
+          ? `Volume cardiovascular elevado. Seu sistema aeróbico está sendo muito solicitado — considere reduzir o ritmo ou fazer um dia de recuperação ativa.`
+          : `Sua carga está distribuída de forma relativamente equilibrada entre os grupos musculares.`
+        }
+      </p>
+    </div>` : ''}
+
+    <div class="analysis-card highlight">
+      <div class="ac-title">Recomendações</div>
+      <ul class="rec-list">
+        ${recs.map(r => `<li>${r}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+}
+
 // ===========================
 // INIT — add PR renders
 // ===========================
@@ -1083,6 +1261,13 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
   homeObserver.observe(document.getElementById('screen-home'), { attributes: true, attributeFilter: ['class'] });
+
+  const analysisObserver = new MutationObserver(() => {
+    if (document.getElementById('screen-analysis').classList.contains('active')) {
+      renderAnalysis();
+    }
+  });
+  analysisObserver.observe(document.getElementById('screen-analysis'), { attributes: true, attributeFilter: ['class'] });
 
   const prObserver = new MutationObserver(() => {
     if (document.getElementById('screen-pr').classList.contains('active')) {
