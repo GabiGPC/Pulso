@@ -783,28 +783,6 @@ function renderLoadBar() {
   }
 }
 
-function renderAlertCard() {
-  const card = document.getElementById('alertCard');
-  if (!card) return;
-
-  // Never show alert if no workouts have been recorded at all
-  const hasAny = Object.keys(state.workouts).length > 0;
-  if (!hasAny) {
-    card.classList.add('hidden');
-    return;
-  }
-
-  const { scores } = calcWeekLoad();
-  const alert = detectAlert(scores);
-
-  if (alert) {
-    card.classList.remove('hidden');
-    document.getElementById('alertTitle').textContent = alert.title;
-    document.getElementById('alertText').textContent  = alert.text;
-  } else {
-    card.classList.add('hidden');
-  }
-}
 
 function renderHome() {
   // top date
@@ -820,7 +798,6 @@ function renderHome() {
   }
   renderStatusContext();
   renderLoadBar();
-  renderAlertCard();
   renderWeekStrip();
   renderMyMods();
 }
