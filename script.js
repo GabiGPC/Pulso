@@ -575,10 +575,29 @@ function renderStatusContext() {
 }
 
 function renderLoadBar() {
+  const hasAny = Object.keys(state.workouts).length > 0;
+  const bar  = document.getElementById('loadBar');
+  const pill = document.getElementById('loadStatePill');
+
+  // No workouts yet — keep bar empty and pill neutral
+  if (!hasAny) {
+    if (bar)  { bar.style.width = '0%'; }
+    if (pill) {
+      pill.textContent = 'Sem dados ainda';
+      pill.style.background  = 'var(--surface2)';
+      pill.style.color       = 'var(--text-dim)';
+      pill.style.borderColor = 'var(--border)';
+    }
+    // Reset all zone labels to dim
+    ['rest','attention','risk'].forEach(z => {
+      const el = document.getElementById('lz-' + z);
+      if (el) el.classList.remove('active-lz');
+    });
+    return;
+  }
+
   const { pct } = calcWeekLoad();
   const zone    = loadZone(pct);
-  const bar     = document.getElementById('loadBar');
-  const pill    = document.getElementById('loadStatePill');
 
   // Animate bar
   if (bar) {
@@ -606,18 +625,26 @@ function renderLoadBar() {
 
   // Pill showing state + pct
   if (pill) {
-    pill.textContent = zoneLabel(zone) + (pct > 0 ? ' · ' + pct + '%' : '');
-    pill.style.background = zoneColor(zone) + '22';
+    pill.textContent = zoneLabel(zone) + ' · ' + pct + '%';
+    pill.style.background  = zoneColor(zone) + '22';
     pill.style.color       = zoneColor(zone);
     pill.style.borderColor = zoneColor(zone) + '55';
   }
 }
 
 function renderAlertCard() {
+  const card = document.getElementById('alertCard');
+  if (!card) return;
+
+  // Never show alert if no workouts have been recorded at all
+  const hasAny = Object.keys(state.workouts).length > 0;
+  if (!hasAny) {
+    card.classList.add('hidden');
+    return;
+  }
+
   const { scores } = calcWeekLoad();
   const alert = detectAlert(scores);
-  const card  = document.getElementById('alertCard');
-  if (!card) return;
 
   if (alert) {
     card.classList.remove('hidden');
