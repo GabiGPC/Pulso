@@ -1,1411 +1,327 @@
-/* ===========================
-   PULSO — Design System
-   =========================== */
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PULSO — Gestão de Performance</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+</head>
+<body>
 
-:root {
-  --bg: #0a0a0f;
-  --surface: #111118;
-  --surface2: #18181f;
-  --border: #ffffff12;
-  --accent: #e8ff47;         /* electric lime — movimento, energia */
-  --accent2: #ff5c3a;        /* laranja-fogo — alerta, intensidade */
-  --accent3: #3affb8;        /* verde-neon — saúde, OK */
-  --text: #f0f0f0;
-  --text-muted: #888;
-  --text-dim: #555;
-  --red: #ff5c3a;
-  --yellow: #ffd166;
-  --green: #3affb8;
-  --font-display: 'Bebas Neue', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
-  --font-mono: 'Space Mono', monospace;
-  --radius: 16px;
-  --radius-sm: 10px;
-}
+  <!-- Background pulse rings -->
+  <div class="bg-pulse">
+    <div class="ring r1"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+  </div>
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <!-- ========== SPLASH / ONBOARDING ========== -->
+  <div id="screen-splash" class="screen active">
+    <div class="splash-inner">
+      <div class="logo-block">
+        <span class="logo-icon">◎</span>
+        <h1 class="logo-text">PULSO</h1>
+        <p class="logo-sub">sua carga. sua performance. seu ritmo.</p>
+      </div>
+      <button class="btn-primary" onclick="goTo('screen-home')">Começar</button>
+    </div>
+  </div>
 
-html, body {
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.5;
-  overflow: hidden;
-}
+  <!-- ========== HOME / DASHBOARD ========== -->
+  <div id="screen-home" class="screen">
 
-/* ===========================
-   BACKGROUND PULSE RINGS
-   =========================== */
-.bg-pulse {
-  position: fixed;
-  top: -20%;
-  right: -20%;
-  width: 600px;
-  height: 600px;
-  pointer-events: none;
-  z-index: 0;
-}
+    <header class="top-bar">
+      <span class="logo-sm">◎ PULSO</span>
+      <span class="top-date" id="topDate"></span>
+    </header>
 
-.ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid var(--accent);
-  opacity: 0;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) scale(0);
-  animation: pulseRing 6s ease-out infinite;
-}
-.r1 { animation-delay: 0s; }
-.r2 { animation-delay: 2s; }
-.r3 { animation-delay: 4s; }
+    <!-- Status card — fully dynamic -->
+    <section class="status-hero">
+      <div class="status-context" id="statusContext"></div>
+      <div class="status-feeling-row">
+        <button class="feeling-btn" data-feel="tired" onclick="setFeeling(this,'tired')">😴 Cansada</button>
+        <button class="feeling-btn" data-feel="normal" onclick="setFeeling(this,'normal')">😐 Normal</button>
+        <button class="feeling-btn" data-feel="great" onclick="setFeeling(this,'great')">⚡ Disposta</button>
+      </div>
+      <div class="load-meter-wrap">
+        <div class="load-label">Carga acumulada da semana</div>
+        <div class="load-bar-track">
+          <div class="load-bar-fill" id="loadBar" style="width:0%"></div>
+        </div>
+        <div class="load-zone-labels">
+          <span class="lz" id="lz-rest">Descansada</span>
+          <span class="lz" id="lz-attention">Atenção</span>
+          <span class="lz" id="lz-risk">Risco</span>
+        </div>
+        <div class="load-state-pill" id="loadStatePill"></div>
+      </div>
+    </section>
 
-@keyframes pulseRing {
-  0%   { opacity: 0.18; transform: translate(-50%, -50%) scale(0.2); }
-  80%  { opacity: 0; }
-  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
-}
+    <!-- Alert card — dynamic, hidden by default -->
+    <section class="alert-card hidden" id="alertCard">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-body">
+        <div class="alert-title" id="alertTitle"></div>
+        <p class="alert-text" id="alertText"></p>
+        <button class="alert-link" onclick="goTo('screen-analysis')">Ver análise completa →</button>
+      </div>
+    </section>
 
-/* ===========================
-   SCREENS
-   =========================== */
-.screen {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(18px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
-  z-index: 1;
-  padding-bottom: 80px;
-}
-.screen.active {
-  opacity: 1;
-  pointer-events: all;
-  transform: translateY(0);
-}
-.screen.exit {
-  opacity: 0;
-  transform: translateY(-18px);
-}
+    <!-- Week view -->
+    <section class="week-section">
+      <div class="section-title">Semana</div>
+      <div id="weekContainer"></div>
+      <div id="dayDetail"></div>
+    </section>
 
-/* ===========================
-   SPLASH
-   =========================== */
-#screen-splash {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-bottom: 0;
-  background: radial-gradient(ellipse at 70% 20%, #1a1f0a 0%, var(--bg) 60%);
-}
-.splash-inner {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2rem;
-}
-.logo-icon {
-  font-size: 3.5rem;
-  color: var(--accent);
-  animation: spinPulse 4s ease-in-out infinite;
-  display: block;
-}
-@keyframes spinPulse {
-  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
-  50% { transform: scale(1.1) rotate(180deg); opacity: 0.8; }
-}
-.logo-text {
-  font-family: var(--font-display);
-  font-size: 5rem;
-  letter-spacing: 0.12em;
-  color: var(--accent);
-  line-height: 1;
-}
-.logo-sub {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  letter-spacing: 0.06em;
-  text-transform: lowercase;
-  margin-top: -1rem;
-}
+    <!-- Modalities quick view -->
+    <section class="modalities-section">
+      <div class="section-title">Suas modalidades</div>
+      <div class="mod-blocks" id="myModBlocks"></div>
+    </section>
 
-/* ===========================
-   HEADER
-   =========================== */
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.2rem 1.4rem 0.8rem;
-  position: sticky;
-  top: 0;
-  background: var(--bg);
-  z-index: 10;
-  border-bottom: 1px solid var(--border);
-}
-.logo-sm {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-}
-.screen-title {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  letter-spacing: 0.08em;
-  color: var(--text);
-}
-.back-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-}
-.icon-btn {
-  background: var(--accent);
-  color: var(--bg);
-  border: none;
-  border-radius: 20px;
-  padding: 0.4rem 1rem;
-  font-weight: 500;
-  font-size: 0.85rem;
-  cursor: pointer;
-  font-family: var(--font-body);
-  transition: transform 0.15s;
-}
-.icon-btn:active { transform: scale(0.95); }
+    <!-- Nav -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" onclick="goTo('screen-home')">
+        <span class="nav-icon">◉</span><span>Hoje</span>
+      </button>
+      <button class="nav-btn" onclick="goTo('screen-checkin')">
+        <span class="nav-icon">＋</span><span>Registrar</span>
+      </button>
+      <button class="nav-btn" onclick="goTo('screen-modalities')">
+        <span class="nav-icon">▦</span><span>Modalidades</span>
+      </button>
+      <button class="nav-btn" onclick="goTo('screen-analysis')">
+        <span class="nav-icon">〜</span><span>Análise</span>
+      </button>
+      <button class="nav-btn" onclick="goTo('screen-pr')">
+        <span class="nav-icon">🏆</span><span>PRs</span>
+      </button>
+    </nav>
+  </div>
 
-/* ===========================
-   BUTTONS
-   =========================== */
-.btn-primary {
-  background: var(--accent);
-  color: var(--bg);
-  border: none;
-  border-radius: var(--radius);
-  padding: 1rem 2rem;
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  width: 100%;
-  max-width: 340px;
-  transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 0 24px #e8ff4740;
-}
-.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 32px #e8ff4760; }
-.btn-primary:active { transform: scale(0.97); }
+  <!-- ========== CHECK-IN / REGISTRO ========== -->
+  <div id="screen-checkin" class="screen">
+    <header class="top-bar">
+      <button class="back-btn" onclick="goBack()">← Voltar</button>
+      <span class="screen-title">Registrar Treino</span>
+    </header>
 
-/* ===========================
-   STATUS HERO
-   =========================== */
-.status-hero {
-  margin: 1.2rem 1.4rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.4rem;
-}
-.status-label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text);
-  margin-bottom: 1rem;
-}
-.status-feeling-row {
-  display: flex;
-  gap: 0.6rem;
-  margin-bottom: 1.4rem;
-}
-.feeling-btn {
-  flex: 1;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 0.7rem 0.3rem;
-  font-family: var(--font-body);
-  font-size: 0.88rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.feeling-btn.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: #e8ff4712;
-}
-.load-label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.6rem;
-}
-.load-bar-track {
-  background: var(--surface2);
-  border-radius: 20px;
-  height: 12px;
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-}
-.load-bar-fill {
-  height: 100%;
-  border-radius: 20px;
-  background: linear-gradient(90deg, var(--accent3) 0%, var(--yellow) 50%, var(--red) 85%);
-  transition: width 1s cubic-bezier(.16,1,.3,1);
-  position: relative;
-}
-.load-bar-fill::after {
-  content: '';
-  position: absolute;
-  right: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: white;
-  border-radius: 2px;
-  box-shadow: 0 0 8px white;
-}
-.load-pct {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.65rem;
-  font-family: var(--font-mono);
-  color: var(--bg);
-  font-weight: 700;
-}
-.load-zones {
-  display: flex;
-  justify-content: space-between;
-}
-.zone {
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.zone.active-zone { color: var(--red); font-weight: 700; }
+    <!-- Date selector for checkin -->
+    <div class="checkin-date-bar">
+      <span class="checkin-date-label">Registrando para:</span>
+      <div class="checkin-date-scroll" id="checkinDateScroll"></div>
+    </div>
 
-/* ===========================
-   ALERT CARD
-   =========================== */
-.alert-card {
-  margin: 0 1.4rem 1.2rem;
-  background: #ff5c3a12;
-  border: 1px solid #ff5c3a40;
-  border-radius: var(--radius);
-  padding: 1.2rem;
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-}
-.alert-icon {
-  font-size: 1.4rem;
-  flex-shrink: 0;
-  line-height: 1;
-  margin-top: 2px;
-}
-.alert-title {
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: var(--red);
-  margin-bottom: 0.4rem;
-}
-.alert-text {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  margin-bottom: 0.6rem;
-  line-height: 1.55;
-}
-.alert-link {
-  background: none;
-  border: none;
-  color: var(--red);
-  font-size: 0.82rem;
-  cursor: pointer;
-  font-family: var(--font-body);
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
+    <div class="checkin-body">
+      <div class="step" id="step1">
+        <div class="step-label">01 — Qual modalidade?</div>
+        <div class="checkin-mod-grid" id="checkinModGrid"></div>
+      </div>
 
-/* ===========================
-   WEEK STRIP
-   =========================== */
-.week-section, .modalities-section {
-  padding: 0 1.4rem 1.2rem;
-}
-.section-title {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  letter-spacing: 0.08em;
-  color: var(--text);
-  text-transform: uppercase;
-  margin-bottom: 0.8rem;
-}
-.week-strip {
-  display: flex;
-  gap: 0.5rem;
-}
-.day-block {
-  flex: 1;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.7rem 0.3rem;
-  text-align: center;
-  transition: all 0.2s;
-}
-.day-block.today {
-  border-color: var(--accent);
-  background: #e8ff4710;
-}
-.day-block.loaded {
-  border-color: var(--red);
-  background: #ff5c3a10;
-}
-.day-name {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  margin-bottom: 0.4rem;
-}
-.day-dot-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: center;
-  min-height: 30px;
-  justify-content: center;
-}
-.day-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-}
+      <div class="step hidden" id="step2">
+        <div class="step-label">02 — Duração</div>
+        <div class="duration-picker">
+          <button class="dur-btn" onclick="selectDur(this)" data-val="30">30 min</button>
+          <button class="dur-btn" onclick="selectDur(this)" data-val="45">45 min</button>
+          <button class="dur-btn active" onclick="selectDur(this)" data-val="60">60 min</button>
+          <button class="dur-btn" onclick="selectDur(this)" data-val="90">90 min</button>
+          <button class="dur-btn" onclick="selectDur(this)" data-val="120">120 min</button>
+        </div>
+      </div>
 
-/* ===========================
-   MODALITY BLOCKS
-   =========================== */
-.mod-blocks {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-}
-.mod-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.9rem 0.6rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.22s cubic-bezier(.16,1,.3,1);
-  position: relative;
-  overflow: hidden;
-}
-.mod-block::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--mod-color, var(--accent));
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.mod-block:hover::before, .mod-block.selected::before { opacity: 0.08; }
-.mod-block.selected {
-  border-color: var(--mod-color, var(--accent));
-  transform: translateY(-2px);
-}
-.mod-emoji {
-  font-size: 1.5rem;
-  display: block;
-  margin-bottom: 0.35rem;
-}
-.mod-name {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: 0.02em;
-}
-.mod-cat-label {
-  font-size: 0.65rem;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-top: 0.25rem;
-}
-.mod-load-bar {
-  margin-top: 0.5rem;
-  height: 3px;
-  background: var(--surface2);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.mod-load-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--mod-color, var(--accent));
-}
+      <div class="step hidden" id="step3">
+        <div class="step-label">03 — Intensidade</div>
+        <div class="intensity-row">
+          <button class="int-btn" data-val="light" onclick="selectInt(this)">
+            <span class="int-icon">🌿</span>
+            <span class="int-label">Leve</span>
+          </button>
+          <button class="int-btn active" data-val="normal" onclick="selectInt(this)">
+            <span class="int-icon">🔥</span>
+            <span class="int-label">Normal</span>
+          </button>
+          <button class="int-btn" data-val="heavy" onclick="selectInt(this)">
+            <span class="int-icon">💥</span>
+            <span class="int-label">Pesado</span>
+          </button>
+          <button class="int-btn" data-val="pr" onclick="selectInt(this)">
+            <span class="int-icon">🏆</span>
+            <span class="int-label">PR</span>
+          </button>
+        </div>
+      </div>
 
-/* ===========================
-   MODALITIES SCREEN
-   =========================== */
-.mod-body {
-  padding: 1.2rem 1.4rem;
-}
-.mod-intro {
-  color: var(--text-muted);
-  font-size: 0.88rem;
-  margin-bottom: 1.5rem;
-  line-height: 1.6;
-}
-.cat-section { margin-bottom: 1.5rem; }
-.cat-title {
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  margin-bottom: 0.7rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.cat-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-.cat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-}
-.cat-mod-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.9rem 0.5rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.22s cubic-bezier(.16,1,.3,1);
-  position: relative;
-  overflow: hidden;
-}
-.cat-mod-block.selected {
-  border-color: var(--mod-color, var(--accent));
-  background: color-mix(in srgb, var(--mod-color, var(--accent)) 8%, transparent);
-  transform: translateY(-2px);
-}
-.cat-mod-block .mod-emoji { font-size: 1.4rem; }
-.cat-mod-block .mod-name { font-size: 0.7rem; }
+      <!-- Força extras -->
+      <div class="step hidden" id="stepForce">
+        <div class="step-label">03b — Foco muscular (força)</div>
+        <div class="muscle-grid">
+          <button class="muscle-btn" data-val="lower" onclick="selectMuscle(this)">
+            <span>🦵</span> Membros Inferiores
+          </button>
+          <button class="muscle-btn" data-val="upper" onclick="selectMuscle(this)">
+            <span>💪</span> Membros Superiores
+          </button>
+          <button class="muscle-btn active" data-val="full" onclick="selectMuscle(this)">
+            <span>🔄</span> Full Body
+          </button>
+          <button class="muscle-btn" data-val="core" onclick="selectMuscle(this)">
+            <span>⚡</span> Core / Abdômen
+          </button>
+        </div>
+        <div class="step-label" style="margin-top:1.2rem">Carga usada</div>
+        <div class="weight-row">
+          <button class="weight-btn" data-val="below" onclick="selectWeight(this)">Abaixo do habitual</button>
+          <button class="weight-btn active" data-val="usual" onclick="selectWeight(this)">Habitual</button>
+          <button class="weight-btn" data-val="above" onclick="selectWeight(this)">Acima do habitual</button>
+          <button class="weight-btn" data-val="pr" onclick="selectWeight(this)">PR 🏆</button>
+        </div>
+      </div>
 
-/* ===========================
-   CHECK-IN SCREEN
-   =========================== */
-.checkin-body {
-  padding: 1.4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-.step { transition: all 0.3s ease; }
-.step.hidden { display: none; }
-.step-label {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 0.9rem;
-}
-.checkin-mod-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-}
-.duration-picker {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.dur-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 0.7rem 1rem;
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.dur-btn.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: #e8ff4712;
-}
-.intensity-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-}
-.int-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 1rem 0.4rem;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.2s;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  align-items: center;
-}
-.int-btn.active {
-  border-color: var(--accent);
-  background: #e8ff4712;
-}
-.int-icon { font-size: 1.3rem; }
-.int-label {
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  font-family: var(--font-body);
-}
-.int-btn.active .int-label { color: var(--accent); }
-.muscle-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
-}
-.muscle-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 1rem;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-family: var(--font-body);
-  font-size: 0.82rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-}
-.muscle-btn.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: #e8ff4712;
-}
-.weight-row {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.weight-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 0.6rem 0.9rem;
-  font-family: var(--font-body);
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.weight-btn.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: #e8ff4712;
-}
-.note-input {
-  width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 1rem;
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: 0.88rem;
-  resize: none;
-  height: 100px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-.note-input:focus { border-color: var(--accent); }
-.btn-save { max-width: 100%; }
+      <div class="step hidden" id="step4">
+        <div class="step-label">04 — Como foi?</div>
+        <textarea class="note-input" placeholder="Anotação livre (opcional)... ex: joelho doeu, superei o pace, treino em grupo"></textarea>
+      </div>
 
-/* ===========================
-   ANALYSIS SCREEN
-   =========================== */
-.analysis-body {
-  padding: 1.2rem 1.4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.analysis-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.3rem;
-}
-.analysis-card.highlight {
-  border-color: var(--accent);
-  background: #e8ff4708;
-}
-.ac-title {
-  font-family: var(--font-display);
-  font-size: 1rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 0.7rem;
-}
-.ac-status {
-  font-weight: 600;
-  font-size: 0.95rem;
-  margin-bottom: 0.8rem;
-  padding: 0.6rem 0.9rem;
-  border-radius: var(--radius-sm);
-}
-.ac-status.red { color: var(--red); background: #ff5c3a14; }
-.ac-text {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  line-height: 1.65;
-}
-.body-map-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-}
-.body-region {
-  text-align: center;
-  padding: 0.8rem 0.3rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.68rem;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-.body-region span { font-size: 1.2rem; display: block; margin-bottom: 0.25rem; }
-.body-region small { color: var(--text-dim); font-size: 0.6rem; }
-.body-region.red { background: #ff5c3a18; border: 1px solid #ff5c3a40; color: var(--red); }
-.body-region.yellow { background: #ffd16618; border: 1px solid #ffd16640; color: var(--yellow); }
-.body-region.green { background: #3affb818; border: 1px solid #3affb840; color: var(--green); }
-.rec-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-.rec-list li {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-.rec-list li strong { color: var(--text); }
+    </div>
 
-/* ===========================
-   BOTTOM NAV
-   =========================== */
-.bottom-nav {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
-  display: flex;
-  padding: 0.7rem 0 0.8rem;
-  z-index: 20;
-}
-.nav-btn {
-  flex: 1;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  transition: color 0.2s;
-}
-.nav-btn.active { color: var(--accent); }
-.nav-icon { font-size: 1.25rem; }
+    <div class="checkin-save-bar hidden" id="saveBar">
+      <button class="btn-primary btn-save" id="btnSave" onclick="saveCheckin()">Salvar treino</button>
+    </div>
 
-/* ===========================
-   TOAST
-   =========================== */
-.toast {
-  position: fixed;
-  bottom: 90px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: var(--accent);
-  color: var(--bg);
-  padding: 0.7rem 1.4rem;
-  border-radius: 30px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  opacity: 0;
-  transition: all 0.3s;
-  z-index: 100;
-  white-space: nowrap;
-}
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">◉</span><span>Hoje</span></button>
+      <button class="nav-btn active" onclick="goTo('screen-checkin')"><span class="nav-icon">＋</span><span>Registrar</span></button>
+      <button class="nav-btn" onclick="goTo('screen-modalities')"><span class="nav-icon">▦</span><span>Modalidades</span></button>
+      <button class="nav-btn" onclick="goTo('screen-analysis')"><span class="nav-icon">〜</span><span>Análise</span></button>
+      <button class="nav-btn" onclick="goTo('screen-pr')"><span class="nav-icon">🏆</span><span>PRs</span></button>
+    </nav>
+  </div>
 
-/* ===========================
-   PERSONAL RECORDS SCREEN
-   =========================== */
-.pr-hero {
-  padding: 1.2rem 1.4rem 0.8rem;
-}
-.pr-title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-}
-.pr-trophy {
-  font-size: 2.2rem;
-  filter: drop-shadow(0 0 12px #ffd16680);
-  animation: trophyGlow 3s ease-in-out infinite;
-}
-@keyframes trophyGlow {
-  0%, 100% { filter: drop-shadow(0 0 8px #ffd16640); }
-  50%       { filter: drop-shadow(0 0 20px #ffd166aa); }
-}
-.pr-heading {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  letter-spacing: 0.08em;
-  color: var(--text);
-  line-height: 1;
-}
-.pr-sub {
-  font-size: 0.88rem;
-  font-weight: 400;
-  color: var(--text-muted);
-  margin-top: 0.2rem;
-}
+  <!-- ========== MODALIDADES ========== -->
+  <div id="screen-modalities" class="screen">
+    <header class="top-bar">
+      <button class="back-btn" onclick="goBack()">← Voltar</button>
+      <span class="screen-title">Modalidades</span>
+    </header>
 
-/* Tabs */
-.pr-tab-wrap {
-  overflow-x: auto;
-  padding: 0 1.4rem 0.8rem;
-  scrollbar-width: none;
-}
-.pr-tab-wrap::-webkit-scrollbar { display: none; }
-.pr-tabs {
-  display: flex;
-  gap: 0.5rem;
-  width: max-content;
-}
-.pr-tab {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 0.45rem 1rem;
-  font-family: var(--font-body);
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-.pr-tab.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--bg);
-  font-weight: 600;
-}
+    <div class="mod-body">
+      <p class="mod-intro">Selecione as modalidades que você pratica. Isso permite análises mais precisas da sua carga combinada.</p>
 
-/* PR List */
-.pr-list-wrap {
-  padding: 0 1.4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.pr-empty {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: var(--text-dim);
-  font-size: 0.85rem;
-  line-height: 1.8;
-}
-.pr-empty-icon { font-size: 2.5rem; display: block; margin-bottom: 0.8rem; opacity: 0.4; }
+      <div id="allModCategories"></div>
 
-.pr-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 1rem 1.2rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-.pr-item::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--pr-color, var(--accent));
-  border-radius: 2px 0 0 2px;
-}
-.pr-item:hover { transform: translateX(3px); border-color: var(--pr-color, var(--accent)); }
-.pr-item-icon { font-size: 1.3rem; flex-shrink: 0; }
-.pr-item-body { flex: 1; }
-.pr-item-name {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text);
-  margin-bottom: 0.15rem;
-}
-.pr-item-meta {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-.pr-item-value {
-  text-align: right;
-  flex-shrink: 0;
-}
-.pr-item-number {
-  font-family: var(--font-mono);
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--pr-color, var(--accent));
-}
-.pr-item-unit {
-  font-size: 0.65rem;
-  color: var(--text-muted);
-  display: block;
-  text-align: right;
-}
-.pr-new-badge {
-  background: var(--accent);
-  color: var(--bg);
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  padding: 0.1rem 0.4rem;
-  border-radius: 6px;
-  vertical-align: middle;
-  margin-left: 0.4rem;
-}
+      <button class="btn-primary" style="margin-top:2rem" onclick="saveModalities()">Salvar seleção</button>
+    </div>
 
-/* Move sub-groups */
-.pr-subgroup-title {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 0.8rem 0 0.4rem;
-}
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">◉</span><span>Hoje</span></button>
+      <button class="nav-btn" onclick="goTo('screen-checkin')"><span class="nav-icon">＋</span><span>Registrar</span></button>
+      <button class="nav-btn active" onclick="goTo('screen-modalities')"><span class="nav-icon">▦</span><span>Modalidades</span></button>
+      <button class="nav-btn" onclick="goTo('screen-analysis')"><span class="nav-icon">〜</span><span>Análise</span></button>
+      <button class="nav-btn" onclick="goTo('screen-pr')"><span class="nav-icon">🏆</span><span>PRs</span></button>
+    </nav>
+  </div>
 
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: #000000cc;
-  z-index: 50;
-  display: flex;
-  align-items: flex-end;
-  transition: opacity 0.3s;
-}
-.modal-overlay.hidden { display: none; }
-.modal-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius) var(--radius) 0 0;
-  padding: 1.5rem 1.4rem 2rem;
-  width: 100%;
-  max-height: 85vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-  animation: slideUp 0.3s cubic-bezier(.16,1,.3,1);
-}
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.modal-title {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  letter-spacing: 0.08em;
-  color: var(--accent);
-}
-.modal-close {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-.modal-field { display: flex; flex-direction: column; gap: 0.5rem; }
-.field-label {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-.modal-select-row {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-.modal-cat-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 0.45rem 0.8rem;
-  font-size: 0.75rem;
-  cursor: pointer;
-  font-family: var(--font-body);
-  transition: all 0.18s;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-.modal-cat-btn.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: #e8ff4712;
-}
-.modal-move-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  max-height: 180px;
-  overflow-y: auto;
-}
-.modal-move-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 0.6rem 0.9rem;
-  font-size: 0.82rem;
-  text-align: left;
-  cursor: pointer;
-  font-family: var(--font-body);
-  transition: all 0.18s;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.modal-move-btn.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: #e8ff4712;
-}
-.modal-value-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-.value-input {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.75rem 1rem;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 1rem;
-  outline: none;
-  flex: 1;
-  transition: border-color 0.2s;
-}
-.value-input:focus { border-color: var(--accent); }
-.date-input { width: 100%; font-size: 0.88rem; font-family: var(--font-body); }
-.unit-toggle {
-  display: flex;
-  gap: 0.3rem;
-}
-.unit-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.8rem;
-  font-size: 0.75rem;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  transition: all 0.18s;
-}
-.unit-btn.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: #e8ff4712;
-}
+  <!-- ========== ANÁLISE ========== -->
+  <div id="screen-analysis" class="screen">
+    <header class="top-bar">
+      <button class="back-btn" onclick="goBack()">← Voltar</button>
+      <span class="screen-title">Análise de Carga</span>
+    </header>
 
-/* scrollbar for modal */
-.modal-move-list::-webkit-scrollbar { width: 3px; }
-.modal-move-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    <div class="analysis-body" id="analysisBody">
+      <!-- rendered dynamically by renderAnalysis() -->
+    </div>
 
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">◉</span><span>Hoje</span></button>
+      <button class="nav-btn" onclick="goTo('screen-checkin')"><span class="nav-icon">＋</span><span>Registrar</span></button>
+      <button class="nav-btn" onclick="goTo('screen-modalities')"><span class="nav-icon">▦</span><span>Modalidades</span></button>
+      <button class="nav-btn active" onclick="goTo('screen-analysis')"><span class="nav-icon">〜</span><span>Análise</span></button>
+      <button class="nav-btn" onclick="goTo('screen-pr')"><span class="nav-icon">🏆</span><span>PRs</span></button>
+    </nav>
+  </div>
 
-/* Empty modalities state */
-.empty-mods-hint {
-  grid-column: 1 / -1;
-  background: var(--surface);
-  border: 1.5px dashed var(--border);
-  border-radius: var(--radius-sm);
-  padding: 1.4rem;
-  text-align: center;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 0.88rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  transition: border-color 0.2s, color 0.2s;
-}
-.empty-mods-hint:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.empty-mods-icon {
-  font-size: 1.2rem;
-  font-weight: 300;
-}
+  <!-- ========== RECORDES PESSOAIS ========== -->
+  <div id="screen-pr" class="screen">
+    <header class="top-bar">
+      <div class="header-left">
+        <span class="logo-sm">◎ PULSO</span>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" onclick="openAddPR()">+ Novo PR</button>
+      </div>
+    </header>
 
-/* ===========================
-   WEEK NAVIGATION
-   =========================== */
-.week-nav-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.8rem;
-}
-.week-range-label {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.week-nav-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 0.9rem;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s;
-}
-.week-nav-btn:hover:not(.disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.week-nav-btn.disabled {
-  opacity: 0.25;
-  cursor: default;
-}
+    <div class="pr-hero">
+      <div class="pr-title-row">
+        <span class="pr-trophy">🏆</span>
+        <div>
+          <h2 class="pr-heading">Recordes Pessoais</h2>
+          <p class="pr-sub">Seus melhores resultados em cada modalidade</p>
+        </div>
+      </div>
+    </div>
 
-/* Day number below day name */
-.day-num {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 0.35rem;
-  line-height: 1;
-}
-.day-block.today .day-num {
-  color: var(--accent);
-}
-.day-block.selected-day {
-  border-color: var(--accent) !important;
-  background: #e8ff4714 !important;
-}
-.day-block.selected-day .day-name {
-  color: var(--accent);
-}
+    <!-- Category tabs -->
+    <div class="pr-tab-wrap">
+      <div class="pr-tabs" id="prTabs"></div>
+    </div>
 
-/* Day detail card */
-#dayDetail {
-  margin-top: 0.8rem;
-}
-.day-detail-card {
-  background: var(--surface);
-  border: 1px solid var(--dd-color, var(--border));
-  border-radius: var(--radius-sm);
-  padding: 1rem 1.1rem;
-  position: relative;
-  overflow: hidden;
-  animation: fadeSlideIn 0.25s ease;
-}
-.day-detail-card::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--dd-color, var(--accent));
-}
-@keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.dd-date {
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-  margin-bottom: 0.7rem;
-}
-.dd-mod-row {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-}
-.dd-emoji { font-size: 1.6rem; }
-.dd-mod-name {
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: var(--text);
-  margin-bottom: 0.15rem;
-}
-.dd-meta {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-.dd-note {
-  margin-top: 0.7rem;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-style: italic;
-  border-top: 1px solid var(--border);
-  padding-top: 0.6rem;
-}
-.day-detail-card.empty {
-  border-color: var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.day-detail-card.empty::before { display: none; }
-.dd-empty {
-  font-size: 0.82rem;
-  color: var(--text-dim);
-}
-.dd-add-btn {
-  background: none;
-  border: 1px dashed var(--border);
-  color: var(--accent);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.9rem;
-  font-size: 0.8rem;
-  cursor: pointer;
-  font-family: var(--font-body);
-  width: fit-content;
-  transition: border-color 0.2s;
-}
-.dd-add-btn:hover { border-color: var(--accent); }
+    <!-- PR list -->
+    <div class="pr-list-wrap" id="prListWrap"></div>
 
-/* ===========================
-   CHECKIN STICKY SAVE BAR
-   =========================== */
-.checkin-save-bar {
-  position: sticky;
-  bottom: 80px;                   /* sit right above bottom nav */
-  left: 0; right: 0;
-  padding: 0.8rem 1.4rem;
-  background: linear-gradient(to top, var(--bg) 70%, transparent);
-  z-index: 15;
-}
-.checkin-save-bar.hidden { display: none; }
-.checkin-save-bar .btn-primary {
-  max-width: 100%;
-  box-shadow: 0 0 32px #e8ff4740;
-}
+    <!-- Add PR Modal -->
+    <div class="modal-overlay hidden" id="addPRModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">Novo Recorde</span>
+          <button class="modal-close" onclick="closeAddPR()">✕</button>
+        </div>
 
-/* ===========================
-   DYNAMIC STATUS CARD
-   =========================== */
+        <div class="modal-field">
+          <label class="field-label">Categoria</label>
+          <div class="modal-select-row" id="modalCatRow"></div>
+        </div>
 
-/* Header date */
-.top-date {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  text-transform: capitalize;
-  letter-spacing: 0.04em;
-}
+        <div class="modal-field">
+          <label class="field-label">Movimento</label>
+          <div class="modal-move-list" id="modalMoveList"></div>
+        </div>
 
-/* Context message */
-.status-context {
-  margin-bottom: 1rem;
-}
-.sc-label {
-  font-family: var(--font-display);
-  font-size: 1rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text);
-  margin-bottom: 0.3rem;
-}
-.sc-msg {
-  font-size: 0.88rem;
-  color: var(--text-muted);
-  line-height: 1.55;
-}
+        <div class="modal-field" id="modalValueField">
+          <label class="field-label" id="modalValueLabel">Valor</label>
+          <div class="modal-value-row">
+            <input type="number" class="value-input" id="prValueInput" placeholder="0" step="0.01" />
+            <div class="unit-toggle" id="unitToggle"></div>
+          </div>
+        </div>
 
-/* Load bar — no pct text inside */
-.load-bar-fill::after { display: none; }
+        <div class="modal-field">
+          <label class="field-label">Data</label>
+          <input type="date" class="value-input date-input" id="prDateInput" />
+        </div>
 
-/* Zone labels row */
-.load-zone-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.4rem;
-  margin-bottom: 0.6rem;
-}
-.lz {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  transition: color 0.3s;
-}
-.lz.active-lz {
-  color: var(--text);
-}
+        <div class="modal-field">
+          <label class="field-label">Nota (opcional)</label>
+          <input type="text" class="value-input" id="prNoteInput" placeholder="ex: sentiu leve, novo ciclo..." />
+        </div>
 
-/* State pill */
-.load-state-pill {
-  display: inline-block;
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
-  border: 1px solid;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  transition: all 0.4s;
-}
+        <button class="btn-primary" style="margin-top:1rem" onclick="savePR()">Salvar PR</button>
+      </div>
+    </div>
 
-/* Hidden alert */
-.alert-card.hidden { display: none; }
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">◉</span><span>Hoje</span></button>
+      <button class="nav-btn" onclick="goTo('screen-checkin')"><span class="nav-icon">＋</span><span>Registrar</span></button>
+      <button class="nav-btn" onclick="goTo('screen-modalities')"><span class="nav-icon">▦</span><span>Modalidades</span></button>
+      <button class="nav-btn" onclick="goTo('screen-analysis')"><span class="nav-icon">〜</span><span>Análise</span></button>
+      <button class="nav-btn active" onclick="goTo('screen-pr')"><span class="nav-icon">🏆</span><span>PRs</span></button>
+    </nav>
+  </div>
 
-/* ===========================
-   CHECKIN DATE SELECTOR
-   =========================== */
-.checkin-date-bar {
-  padding: 0.8rem 1.4rem 0;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0.8rem;
-}
-.checkin-date-label {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  display: block;
-  margin-bottom: 0.6rem;
-}
-.checkin-date-scroll {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-bottom: 2px;
-}
-.checkin-date-scroll::-webkit-scrollbar { display: none; }
-.date-chip {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.8rem;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.15rem;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-.date-chip.active {
-  border-color: var(--accent);
-  background: #e8ff4714;
-}
-.dc-name {
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-}
-.date-chip.active .dc-name { color: var(--accent); }
-.dc-num {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--text);
-}
-.date-chip.active .dc-num { color: var(--accent); }
-
-/* Day detail divider between multiple workouts */
-.dd-divider {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 0.7rem 0;
-}
+  <script src="script.js"></script>
+</body>
+</html>
