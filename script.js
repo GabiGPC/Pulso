@@ -206,6 +206,14 @@ function shiftWeek(dir) {
 
 function selectDay(i) {
   state.selectedDayIndex = (state.selectedDayIndex === i) ? null : i;
+  // Pre-set checkin date to the clicked day so "Registrar" uses it
+  if (state.selectedDayIndex !== null) {
+    const weekDates = getWeekDates(state.weekOffset);
+    const d = weekDates[state.selectedDayIndex];
+    state.checkinDate = dateKey(d);
+  } else {
+    state.checkinDate = todayKey();
+  }
   renderWeekStrip();
 }
 
@@ -218,49 +226,109 @@ function renderDayDetail() {
     return;
   }
 
-  const weekDates = getWeekDates(state.weekOffset);
-  const date = weekDates[state.selectedDayIndex];
-  const key = dateKey(date);
-  const workout = state.workouts[key];
+  const weekDates    = getWeekDates(state.weekOffset);
+  const date         = weekDates[state.selectedDayIndex];
+  const key          = dateKey(date);
+  const allWorkouts  = state.workouts[key] || [];
+  const firstMod     = allWorkouts[0] ? MODALITIES.find(m => m.id === allWorkouts[0].modal) : null;
+  const ddColor      = firstMod ? firstMod.color : 'var(--accent)';
+  const label        = date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  const isFuture     = date > new Date() && key !== todayKey();
 
-  const label = date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  const intensityLabel = { light:'Leve', normal:'Normal', heavy:'Pesado', pr:'PR 🏆' };
+  const muscleLabel    = { lower:'Membros Inferiores', upper:'Membros Superiores', full:'Full Body', core:'Core' };
 
-  if (!workout) {
+  // ── Empty state ──
+  if (allWorkouts.length === 0) {
     el.innerHTML = `
       <div class="day-detail-card empty">
-        <div class="dd-date">${label}</div>
+        <div class="dd-header-row">
+          <div class="dd-date">${label}</div>
+        </div>
         <div class="dd-empty">Nenhum treino registrado neste dia.</div>
-        <button class="dd-add-btn" onclick="goTo('screen-checkin')">+ Registrar treino</button>
+        ${!isFuture ? `<button class="dd-add-btn" onclick="goToCheckinForDay('${key}')">+ Registrar treino</button>` : ''}
       </div>
     `;
     return;
   }
 
-  const mod = MODALITIES.find(m => m.id === workout.modal);
-  const intensityLabel = { light:'Leve', normal:'Normal', heavy:'Pesado', pr:'PR 🏆' };
-  const muscleLabel    = { lower:'Membros Inferiores', upper:'Membros Superiores', full:'Full Body', core:'Core' };
-  const allWorkouts    = state.workouts[key] || [];
-
-  const workoutsHTML = allWorkouts.map(w => {
+  // ── Workout list with edit / delete ──
+  const workoutsHTML = allWorkouts.map((w, idx) => {
     const m = MODALITIES.find(mo => mo.id === w.modal);
     return `
-      <div class="dd-mod-row">
-        <span class="dd-emoji">${m ? m.emoji : '❓'}</span>
-        <div>
-          <div class="dd-mod-name">${m ? m.name : w.modal}</div>
-          <div class="dd-meta">${w.duration} min · ${intensityLabel[w.intensity] || w.intensity}${w.muscle ? ' · ' + (muscleLabel[w.muscle] || w.muscle) : ''}</div>
-          ${w.note ? `<div class="dd-note">${w.note}</div>` : ''}
+      <div class="dd-workout-item" id="dd-item-${key}-${idx}">
+        <div class="dd-mod-row">
+          <span class="dd-emoji">${m ? m.emoji : '❓'}</span>
+          <div class="dd-mod-info">
+            <div class="dd-mod-name">${m ? m.name : w.modal}</div>
+            <div class="dd-meta">
+              ${w.duration} min · ${intensityLabel[w.intensity] || w.intensity}
+              ${w.muscle ? ' · ' + (muscleLabel[w.muscle] || w.muscle) : ''}
+            </div>
+            ${w.note ? `<div class="dd-note">${w.note}</div>` : ''}
+          </div>
+          <div class="dd-actions">
+            <button class="dd-action-btn edit" title="Editar" onclick="editWorkout('${key}', ${idx})">✏️</button>
+            <button class="dd-action-btn delete" title="Excluir" onclick="deleteWorkout('${key}', ${idx})">🗑️</button>
+          </div>
         </div>
       </div>
+      ${idx < allWorkouts.length - 1 ? '<hr class="dd-divider">' : ''}
     `;
-  }).join('<hr class="dd-divider">');
+  }).join('');
 
   el.innerHTML = `
-    <div class="day-detail-card" style="--dd-color:${mod ? mod.color : 'var(--accent)'}">
-      <div class="dd-date">${label}</div>
+    <div class="day-detail-card" style="--dd-color:${ddColor}">
+      <div class="dd-header-row">
+        <div class="dd-date">${label}</div>
+        <button class="dd-add-btn inline" onclick="goToCheckinForDay('${key}')">+ Adicionar</button>
+      </div>
       ${workoutsHTML}
     </div>
   `;
+}
+
+function goToCheckinForDay(key) {
+  state.checkinDate = key;
+  goTo('screen-checkin');
+}
+
+function deleteWorkout(key, idx) {
+  if (!state.workouts[key]) return;
+  state.workouts[key].splice(idx, 1);
+  if (state.workouts[key].length === 0) delete state.workouts[key];
+  renderWeekStrip();
+  renderHome();
+}
+
+function editWorkout(key, idx) {
+  const w = state.workouts[key] && state.workouts[key][idx];
+  if (!w) return;
+  // Store edit context, delete the old entry, open checkin pre-filled
+  state.editContext = { key, idx, workout: { ...w } };
+  state.checkinDate = key;
+  // Remove old so save won't duplicate
+  state.workouts[key].splice(idx, 1);
+  if (state.workouts[key].length === 0) delete state.workouts[key];
+  goTo('screen-checkin');
+  // Pre-select the modality after checkin renders
+  setTimeout(() => {
+    const modEl = document.querySelector(`#checkinModGrid .mod-block[data-id="${w.modal}"]`);
+    if (modEl) selectMod(w.modal, modEl);
+    // Pre-set duration
+    document.querySelectorAll('.dur-btn').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.val) === w.duration);
+    });
+    state.selectedDuration = w.duration;
+    // Pre-set intensity
+    document.querySelectorAll('.int-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.val === w.intensity);
+    });
+    state.selectedIntensity = w.intensity;
+    // Note
+    const noteEl = document.querySelector('.note-input');
+    if (noteEl && w.note) noteEl.value = w.note;
+  }, 200);
 }
 
 function renderMyMods() {
@@ -380,7 +448,8 @@ function resetCheckin() {
     state.selectedIntensity  = 'normal';
     state.selectedMuscle     = 'full';
     state.selectedWeight     = 'usual';
-    state.checkinDate        = todayKey();
+    // Only reset to today if no specific day was pre-selected
+    if (!state.checkinDate) state.checkinDate = todayKey();
 
     const ids = ['step1','step2','step3','stepForce','step4','saveBar'];
     ids.forEach(id => {
