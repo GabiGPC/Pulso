@@ -100,20 +100,27 @@ let currentScreen = 'screen-splash';
 let prevScreen = null;
 
 function goTo(screenId) {
-  const current = document.getElementById(currentScreen);
-  const next = document.getElementById(screenId);
-  if (!next || screenId === currentScreen) return;
+  try {
+    const current = document.getElementById(currentScreen);
+    const next    = document.getElementById(screenId);
+    if (!next || screenId === currentScreen) return;
 
-  current.classList.remove('active');
-  current.classList.add('exit');
-  setTimeout(() => current.classList.remove('exit'), 400);
+    if (current) {
+      current.classList.remove('active');
+      current.classList.add('exit');
+      setTimeout(() => current.classList.remove('exit'), 400);
+    }
 
-  next.classList.add('active');
-  prevScreen = currentScreen;
-  currentScreen = screenId;
+    next.classList.add('active');
+    prevScreen    = currentScreen;
+    currentScreen = screenId;
 
-  if (screenId === 'screen-checkin') resetCheckin();
-  updateNavButtons(screenId);
+    if (screenId === 'screen-checkin') resetCheckin();
+    if (screenId === 'screen-analysis') renderAnalysis();
+    updateNavButtons(screenId);
+  } catch(e) {
+    console.error('goTo error:', e);
+  }
 }
 
 function goBack() {
@@ -368,20 +375,39 @@ function selectCheckinDate(key, el) {
 }
 
 function resetCheckin() {
-  state.selectedModalityId = null;
-  state.selectedDuration = 60;
-  state.selectedIntensity = 'normal';
-  state.selectedMuscle = 'full';
-  state.selectedWeight = 'usual';
+  try {
+    state.selectedModalityId = null;
+    state.selectedDuration   = 60;
+    state.selectedIntensity  = 'normal';
+    state.selectedMuscle     = 'full';
+    state.selectedWeight     = 'usual';
+    state.checkinDate        = todayKey();
 
-  document.getElementById('step1').classList.remove('hidden');
-  document.getElementById('step2').classList.add('hidden');
-  document.getElementById('step3').classList.add('hidden');
-  document.getElementById('stepForce').classList.add('hidden');
-  document.getElementById('step4').classList.add('hidden');
-  document.getElementById('saveBar').classList.add('hidden');
+    const ids = ['step1','step2','step3','stepForce','step4','saveBar'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'step1') el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    });
 
-  renderCheckinMods();
+    // Reset intensity buttons
+    document.querySelectorAll('.int-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.val === 'normal');
+    });
+    // Reset duration buttons
+    document.querySelectorAll('.dur-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.val === '60');
+    });
+    // Clear note
+    const note = document.querySelector('.note-input');
+    if (note) note.value = '';
+
+    renderCheckinMods();
+    renderCheckinDateBar();
+  } catch(e) {
+    console.error('resetCheckin error:', e);
+  }
 }
 
 function renderCheckinMods() {
