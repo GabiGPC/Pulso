@@ -33,50 +33,47 @@
   <div id="screen-home" class="screen">
 
     <header class="top-bar">
-      <div class="header-left">
-        <span class="logo-sm">◎ PULSO</span>
-      </div>
-      <div class="header-right">
-        <button class="icon-btn" onclick="goTo('screen-checkin')">+ Treino</button>
-      </div>
+      <span class="logo-sm">◎ PULSO</span>
+      <span class="top-date" id="topDate"></span>
     </header>
 
-    <!-- Status card -->
+    <!-- Status card — fully dynamic -->
     <section class="status-hero">
-      <div class="status-label">Como você está hoje</div>
+      <div class="status-context" id="statusContext"></div>
       <div class="status-feeling-row">
-        <button class="feeling-btn active" data-feel="tired">😴 Cansada</button>
-        <button class="feeling-btn" data-feel="normal">😐 Normal</button>
-        <button class="feeling-btn" data-feel="great">⚡ Disposta</button>
+        <button class="feeling-btn" data-feel="tired" onclick="setFeeling(this,'tired')">😴 Cansada</button>
+        <button class="feeling-btn" data-feel="normal" onclick="setFeeling(this,'normal')">😐 Normal</button>
+        <button class="feeling-btn" data-feel="great" onclick="setFeeling(this,'great')">⚡ Disposta</button>
       </div>
       <div class="load-meter-wrap">
         <div class="load-label">Carga acumulada da semana</div>
         <div class="load-bar-track">
-          <div class="load-bar-fill" id="loadBar" style="width: 72%"></div>
-          <span class="load-pct">72%</span>
+          <div class="load-bar-fill" id="loadBar" style="width:0%"></div>
         </div>
-        <div class="load-zones">
-          <span class="zone z-ok">OK</span>
-          <span class="zone z-attention">Atenção</span>
-          <span class="zone z-risk active-zone">Risco</span>
+        <div class="load-zone-labels">
+          <span class="lz" id="lz-rest">Descansada</span>
+          <span class="lz" id="lz-attention">Atenção</span>
+          <span class="lz" id="lz-risk">Risco</span>
         </div>
+        <div class="load-state-pill" id="loadStatePill"></div>
       </div>
     </section>
 
-    <!-- Alert card -->
-    <section class="alert-card">
+    <!-- Alert card — dynamic, hidden by default -->
+    <section class="alert-card hidden" id="alertCard">
       <div class="alert-icon">⚠</div>
       <div class="alert-body">
-        <div class="alert-title">Membros inferiores sobrecarregados</div>
-        <p class="alert-text">Crossfit full body + corrida + capoeira nos últimos 3 dias. Menos de 24h de recuperação entre estímulos de alta intensidade.</p>
+        <div class="alert-title" id="alertTitle"></div>
+        <p class="alert-text" id="alertText"></p>
         <button class="alert-link" onclick="goTo('screen-analysis')">Ver análise completa →</button>
       </div>
     </section>
 
     <!-- Week view -->
     <section class="week-section">
-      <div class="section-title">Semana atual</div>
-      <div class="week-strip" id="weekStrip"></div>
+      <div class="section-title">Semana</div>
+      <div id="weekContainer"></div>
+      <div id="dayDetail"></div>
     </section>
 
     <!-- Modalities quick view -->
@@ -182,7 +179,10 @@
         <textarea class="note-input" placeholder="Anotação livre (opcional)... ex: joelho doeu, superei o pace, treino em grupo"></textarea>
       </div>
 
-      <button class="btn-primary btn-save hidden" id="btnSave" onclick="saveCheckin()">Salvar treino</button>
+    </div>
+
+    <div class="checkin-save-bar hidden" id="saveBar">
+      <button class="btn-primary btn-save" id="btnSave" onclick="saveCheckin()">Salvar treino</button>
     </div>
 
     <nav class="bottom-nav">
