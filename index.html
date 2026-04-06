@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PULSO — Gestão de Performance</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- Background pulse rings -->
+  <div class="bg-pulse">
+    <div class="ring r1"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+  </div>
+
+  <!-- ========== SPLASH / ONBOARDING ========== -->
+  <div id="screen-splash" class="screen active">
+    <div class="splash-inner">
+      <div class="logo-block">
+        <span class="logo-icon">◎</span>
+        <h1 class="logo-text">PULSO</h1>
+        <p class="logo-sub">sua carga. sua performance. seu ritmo.</p>
+      </div>
+      <button class="btn-primary" onclick="goTo('screen-home')">Começar</button>
+    </div>
+  </div>
+
+  <!-- ========== HOME / DASHBOARD ========== -->
+  <div id="screen-home" class="screen">
+
+    <header class="top-bar">
+      <div class="header-left">
+        <span class="logo-sm">◎ PULSO</span>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" onclick="goTo('screen-checkin')">+ Treino</button>
+      </div>
+    </header>
+
+    <!-- Status card -->
+    <section class="status-hero">
+      <div class="status-label">Como você está hoje</div>
+      <div class="status-feeling-row">
+        <button class="feeling-btn active" data-feel="tired">😴 Cansada</button>
+        <button class="feeling-btn" data-feel="normal">😐 Normal</button>
+        <button class="feeling-btn" data-feel="great">⚡ Disposta</button>
+      </div>
+      <div class="load-meter-wrap">
+        <div class="load-label">Carga acumulada da semana</div>
+        <div class="load-bar-track">
+          <div class="load-bar-fill" id="loadBar" style="width: 72%"></div>
+          <span class="load-pct">72%</span>
+        </div>
+        <div class="load-zones">
+          <span class="zone z-ok">OK</span>
+          <span class="zone z-attention">Atenção</span>
+          <span class="zone z-risk active-zone">Risco</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Alert card -->
+    <section class="alert-card">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-body">
+        <div class="alert-title">Membros inferiores sobrecarregados</div>
+        <p class="alert-text">Crossfit full body + corrida + capoeira nos últimos 3 dias. Menos de 24h de recuperação entre estímulos de alta intensidade.</p>
+        <button class="alert-link" onclick="goTo('screen-analysis')">Ver análise completa →</button>
+      </div>
+    </section>
+
+    <!-- Week view -->
+    <section class="week-section">
+      <div class="section-title">Semana atual</div>
+      <div class="week-strip" id="weekStrip"></div>
+    </section>
+
+    <!-- Modalities quick view -->
+    <section class="modalities-section">
+      <div class="section-title">Suas modalidades</div>
+      <div class="mod-blocks" id="myModBlocks"></div>
+    </section>
+
+    <!-- Nav -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" onclick="goTo('screen-home')">
+        <span class="nav-icon">◉</span><span>Hoje</span>
+      </button>
+      <button class="nav-btn" onclick="goTo('screen-checkin')">
+        <span class="nav-icon">＋</span><span>Registrar</span>
+      </button>
+      <button class="nav-btn" onclick="goTo('screen-modalities')">
+        <span class="nav-icon">▦</span><span>Modalidades</span>
+      </button>
+      <button class="nav-btn" onclick="goTo('screen-analysis')">
+        <span class="nav-icon">〜</span><span>Análise</span>
+      </button>
+      <button class="nav-btn" onclick="goTo('screen-pr')">
+        <span class="nav-icon">🏆</span><span>PRs</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ========== CHECK-IN / REGISTRO ========== -->
+  <div id="screen-checkin" class="screen">
+    <header class="top-bar">
+      <button class="back-btn" onclick="goBack()">← Voltar</button>
+      <span class="screen-title">Registrar Treino</span>
+    </header>
+
+    <div class="checkin-body">
+      <div class="step" id="step1">
+        <div class="step-label">01 — Qual modalidade?</div>
+        <div class="checkin-mod-grid" id="checkinModGrid"></div>
+      </div>
+
+      <div class="step hidden" id="step2">
+        <div class="step-label">02 — Duração</div>
+        <div class="duration-picker">
+          <button class="dur-btn" onclick="selectDur(this)" data-val="30">30 min</button>
+          <button class="dur-btn" onclick="selectDur(this)" data-val="45">45 min</button>
+          <button class="dur-btn active" onclick="selectDur(this)" data-val="60">60 min</button>
+          <button class="dur-btn" onclick="selectDur(this)" data-val="90">90 min</button>
+          <button class="dur-btn" onclick="selectDur(this)" data-val="120">120 min</button>
+        </div>
+      </div>
+
+      <div class="step hidden" id="step3">
+        <div class="step-label">03 — Intensidade</div>
+        <div class="intensity-row">
+          <button class="int-btn" data-val="light" onclick="selectInt(this)">
+            <span class="int-icon">🌿</span>
+            <span class="int-label">Leve</span>
+          </button>
+          <button class="int-btn active" data-val="normal" onclick="selectInt(this)">
+            <span class="int-icon">🔥</span>
+            <span class="int-label">Normal</span>
+          </button>
+          <button class="int-btn" data-val="heavy" onclick="selectInt(this)">
+            <span class="int-icon">💥</span>
+            <span class="int-label">Pesado</span>
+          </button>
+          <button class="int-btn" data-val="pr" onclick="selectInt(this)">
+            <span class="int-icon">🏆</span>
+            <span class="int-label">PR</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Força extras -->
+      <div class="step hidden" id="stepForce">
+        <div class="step-label">03b — Foco muscular (força)</div>
+        <div class="muscle-grid">
+          <button class="muscle-btn" data-val="lower" onclick="selectMuscle(this)">
+            <span>🦵</span> Membros Inferiores
+          </button>
+          <button class="muscle-btn" data-val="upper" onclick="selectMuscle(this)">
+            <span>💪</span> Membros Superiores
+          </button>
+          <button class="muscle-btn active" data-val="full" onclick="selectMuscle(this)">
+            <span>🔄</span> Full Body
+          </button>
+          <button class="muscle-btn" data-val="core" onclick="selectMuscle(this)">
+            <span>⚡</span> Core / Abdômen
+          </button>
+        </div>
+        <div class="step-label" style="margin-top:1.2rem">Carga usada</div>
+        <div class="weight-row">
+          <button class="weight-btn" data-val="below" onclick="selectWeight(this)">Abaixo do habitual</button>
+          <button class="weight-btn active" data-val="usual" onclick="selectWeight(this)">Habitual</button>
+          <button class="weight-btn" data-val="above" onclick="selectWeight(this)">Acima do habitual</button>
+          <button class="weight-btn" data-val="pr" onclick="selectWeight(this)">PR 🏆</button>
+        </div>
+      </div>
+
+      <div class="step hidden" id="step4">
+        <div class="step-label">04 — Como foi?</div>
+        <textarea class="note-input" placeholder="Anotação livre (opcional)... ex: joelho doeu, superei o pace, treino em grupo"></textarea>
+      </div>
+
+      <button class="btn-primary btn-save hidden" id="btnSave" onclick="saveCheckin()">Salvar treino</button>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">◉</span><span>Hoje</span></button>
+      <button class="nav-btn active" onclick="goTo('screen-checkin')"><span class="nav-icon">＋</span><span>Registrar</span></button>
+      <button class="nav-btn" onclick="goTo('screen-modalities')"><span class="nav-icon">▦</span><span>Modalidades</span></button>
+      <button class="nav-btn" onclick="goTo('screen-analysis')"><span class="nav-icon">〜</span><span>Análise</span></button>
+      <button class="nav-btn" onclick="goTo('screen-pr')"><span class="nav-icon">🏆</span><span>PRs</span></button>
+    </nav>
+  </div>
+
+  <!-- ========== MODALIDADES ========== -->
+  <div id="screen-modalities" class="screen">
+    <header class="top-bar">
+      <button class="back-btn" onclick="goBack()">← Voltar</button>
+      <span class="screen-title">Modalidades</span>
+    </header>
+
+    <div class="mod-body">
+      <p class="mod-intro">Selecione as modalidades que você pratica. Isso permite análises mais precisas da sua carga combinada.</p>
+
+      <div id="allModCategories"></div>
+
+      <button class="btn-primary" style="margin-top:2rem" onclick="saveModalities()">Salvar seleção</button>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">◉</span><span>Hoje</span></button>
+      <button class="nav-btn" onclick="goTo('screen-checkin')"><span class="nav-icon">＋</span><span>Registrar</span></button>
+      <button class="nav-btn active" onclick="goTo('screen-modalities')"><span class="nav-icon">▦</span><span>Modalidades</span></button>
+      <button class="nav-btn" onclick="goTo('screen-analysis')"><span class="nav-icon">〜</span><span>Análise</span></button>
+      <button class="nav-btn" onclick="goTo('screen-pr')"><span class="nav-icon">🏆</span><span>PRs</span></button>
+    </nav>
+  </div>
+
+  <!-- ========== ANÁLISE ========== -->
+  <div id="screen-analysis" class="screen">
+    <header class="top-bar">
+      <button class="back-btn" onclick="goBack()">← Voltar</button>
+      <span class="screen-title">Análise de Carga</span>
+    </header>
+
+    <div class="analysis-body">
+
+      <div class="analysis-card">
+        <div class="ac-title">Estado atual</div>
+        <div class="ac-status red">⚠ Carga elevada — risco de fadiga</div>
+        <p class="ac-text">Seus membros inferiores foram exigidos em <strong>4 dos últimos 5 dias</strong>: crossfit full body → corrida → capoeira (impacto alto) → treino de perna.</p>
+      </div>
+
+      <div class="analysis-card">
+        <div class="ac-title">Mapa de estimulação</div>
+        <div class="body-map-row">
+          <div class="body-region red"><span>🦵</span> Inferiores<br><small>Alta carga</small></div>
+          <div class="body-region yellow"><span>🫀</span> Cardio<br><small>Moderado</small></div>
+          <div class="body-region green"><span>💪</span> Superiores<br><small>Descansado</small></div>
+          <div class="body-region green"><span>⚡</span> Core<br><small>Descansado</small></div>
+        </div>
+      </div>
+
+      <div class="analysis-card">
+        <div class="ac-title">O que isso significa</div>
+        <p class="ac-text">O intervalo entre a capoeira (quarta) e o treino de perna (quinta) foi menor que 24h — insuficiente para recuperação. Isso explica o cansaço reportado e aumenta o risco de lesão em joelho e tornozelo.</p>
+      </div>
+
+      <div class="analysis-card highlight">
+        <div class="ac-title">Recomendação para os próximos dias</div>
+        <ul class="rec-list">
+          <li>🛌 <strong>Hoje:</strong> descanso ativo ou treino de membros superiores apenas</li>
+          <li>🚫 <strong>48h:</strong> evite corrida e capoeira</li>
+          <li>🏋️ <strong>Academia:</strong> foque em costas e ombro se quiser treinar</li>
+          <li>💧 <strong>Hidratação:</strong> atenção redobrada hoje e amanhã</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">◉</span><span>Hoje</span></button>
+      <button class="nav-btn" onclick="goTo('screen-checkin')"><span class="nav-icon">＋</span><span>Registrar</span></button>
+      <button class="nav-btn" onclick="goTo('screen-modalities')"><span class="nav-icon">▦</span><span>Modalidades</span></button>
+      <button class="nav-btn active" onclick="goTo('screen-analysis')"><span class="nav-icon">〜</span><span>Análise</span></button>
+      <button class="nav-btn" onclick="goTo('screen-pr')"><span class="nav-icon">🏆</span><span>PRs</span></button>
+    </nav>
+  </div>
+
+  <!-- ========== RECORDES PESSOAIS ========== -->
+  <div id="screen-pr" class="screen">
+    <header class="top-bar">
+      <div class="header-left">
+        <span class="logo-sm">◎ PULSO</span>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" onclick="openAddPR()">+ Novo PR</button>
+      </div>
+    </header>
+
+    <div class="pr-hero">
+      <div class="pr-title-row">
+        <span class="pr-trophy">🏆</span>
+        <div>
+          <h2 class="pr-heading">Recordes Pessoais</h2>
+          <p class="pr-sub">Seus melhores resultados em cada modalidade</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category tabs -->
+    <div class="pr-tab-wrap">
+      <div class="pr-tabs" id="prTabs"></div>
+    </div>
+
+    <!-- PR list -->
+    <div class="pr-list-wrap" id="prListWrap"></div>
+
+    <!-- Add PR Modal -->
+    <div class="modal-overlay hidden" id="addPRModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span class="modal-title">Novo Recorde</span>
+          <button class="modal-close" onclick="closeAddPR()">✕</button>
+        </div>
+
+        <div class="modal-field">
+          <label class="field-label">Categoria</label>
+          <div class="modal-select-row" id="modalCatRow"></div>
+        </div>
+
+        <div class="modal-field">
+          <label class="field-label">Movimento</label>
+          <div class="modal-move-list" id="modalMoveList"></div>
+        </div>
+
+        <div class="modal-field" id="modalValueField">
+          <label class="field-label" id="modalValueLabel">Valor</label>
+          <div class="modal-value-row">
+            <input type="number" class="value-input" id="prValueInput" placeholder="0" step="0.01" />
+            <div class="unit-toggle" id="unitToggle"></div>
+          </div>
+        </div>
+
+        <div class="modal-field">
+          <label class="field-label">Data</label>
+          <input type="date" class="value-input date-input" id="prDateInput" />
+        </div>
+
+        <div class="modal-field">
+          <label class="field-label">Nota (opcional)</label>
+          <input type="text" class="value-input" id="prNoteInput" placeholder="ex: sentiu leve, novo ciclo..." />
+        </div>
+
+        <button class="btn-primary" style="margin-top:1rem" onclick="savePR()">Salvar PR</button>
+      </div>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn" onclick="goTo('screen-home')"><span class="nav-icon">◉</span><span>Hoje</span></button>
+      <button class="nav-btn" onclick="goTo('screen-checkin')"><span class="nav-icon">＋</span><span>Registrar</span></button>
+      <button class="nav-btn" onclick="goTo('screen-modalities')"><span class="nav-icon">▦</span><span>Modalidades</span></button>
+      <button class="nav-btn" onclick="goTo('screen-analysis')"><span class="nav-icon">〜</span><span>Análise</span></button>
+      <button class="nav-btn active" onclick="goTo('screen-pr')"><span class="nav-icon">🏆</span><span>PRs</span></button>
+    </nav>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
